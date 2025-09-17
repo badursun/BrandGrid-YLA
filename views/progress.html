@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Progress Bar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            padding-top: 60px;
+        }
+
+        /* Animated gradient mesh background */
+        .animated-bg {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -3;
+            background: linear-gradient(0deg, #0a0a0a, #1a1a2e);
+        }
+
+        .gradient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: orb-float 20s infinite ease-in-out;
+        }
+
+        .gradient-orb:nth-child(1) {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, #8b5cf6, transparent);
+            top: -300px;
+            left: -300px;
+            animation-duration: 25s;
+        }
+
+        .gradient-orb:nth-child(2) {
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, #3b82f6, transparent);
+            bottom: -400px;
+            right: -400px;
+            animation-duration: 30s;
+            animation-delay: -5s;
+        }
+
+        .gradient-orb:nth-child(3) {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #ec4899, transparent);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-duration: 20s;
+            animation-delay: -10s;
+        }
+
+        .gradient-orb:nth-child(4) {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #10b981, transparent);
+            top: 20%;
+            right: 10%;
+            animation-duration: 22s;
+            animation-delay: -15s;
+        }
+
+        @keyframes orb-float {
+            0%, 100% {
+                transform: translate(0, 0) scale(1);
+            }
+            25% {
+                transform: translate(100px, -100px) scale(1.1);
+            }
+            50% {
+                transform: translate(-100px, 100px) scale(0.9);
+            }
+            75% {
+                transform: translate(50px, 50px) scale(1.05);
+            }
+        }
+
+        /* Moving waves from bottom */
+        .wave-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .wave {
+            position: absolute;
+            width: 200%;
+            height: 200px;
+            bottom: -100px;
+            left: -50%;
+            background: linear-gradient(0deg, rgba(139, 92, 246, 0.1), transparent);
+            border-radius: 50% 50% 0 0;
+            animation: wave-rise 10s infinite ease-in-out;
+        }
+
+        .wave:nth-child(2) {
+            background: linear-gradient(0deg, rgba(59, 130, 246, 0.1), transparent);
+            animation-delay: -2s;
+            animation-duration: 12s;
+        }
+
+        .wave:nth-child(3) {
+            background: linear-gradient(0deg, rgba(236, 72, 153, 0.1), transparent);
+            animation-delay: -4s;
+            animation-duration: 14s;
+        }
+
+        @keyframes wave-rise {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.8;
+            }
+            50% {
+                transform: translateY(-500px) rotate(180deg);
+                opacity: 0.3;
+            }
+            100% {
+                transform: translateY(-1000px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+            filter: blur(1px);
+        }
+
+        .particle:nth-child(odd) {
+            background: radial-gradient(circle, rgba(139, 92, 246, 1) 0%, rgba(139, 92, 246, 0.3) 50%, transparent 70%);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+        }
+
+        .particle:nth-child(even) {
+            background: radial-gradient(circle, rgba(59, 130, 246, 1) 0%, rgba(59, 130, 246, 0.3) 50%, transparent 70%);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .particle:nth-child(3n) {
+            background: radial-gradient(circle, rgba(236, 72, 153, 1) 0%, rgba(236, 72, 153, 0.3) 50%, transparent 70%);
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.5);
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(110vh) translateX(0) rotate(0deg) scale(0);
+                opacity: 0;
+            }
+            10% {
+                transform: translateY(90vh) translateX(20px) rotate(72deg) scale(1);
+                opacity: 1;
+            }
+            30% {
+                transform: translateY(60vh) translateX(-30px) rotate(144deg) scale(1.2);
+            }
+            50% {
+                transform: translateY(30vh) translateX(40px) rotate(216deg) scale(0.8);
+            }
+            70% {
+                transform: translateY(0vh) translateX(-20px) rotate(288deg) scale(1.1);
+            }
+            90% {
+                transform: translateY(-30vh) translateX(30px) rotate(360deg) scale(0.9);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-60vh) translateX(0) rotate(432deg) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* Main content */
+        .container {
+            text-align: center;
+            z-index: 10;
+            width: 90%;
+            max-width: 1200px;
+            transition: all 0.5s ease;
+        }
+
+        h1 {
+            font-size: 4em;
+            background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 50px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 20px rgba(255, 0, 110, 0.5)); }
+            to { filter: drop-shadow(0 0 30px rgba(131, 56, 236, 0.8)); }
+        }
+
+        /* Flip Counter */
+        .flip-counter {
+            display: inline-flex;
+            gap: 10px;
+            margin-bottom: 50px;
+            transition: transform 0.5s;
+        }
+
+        .flip-digit-wrapper {
+            position: relative;
+            width: 80px;
+            height: 120px;
+        }
+
+        .flip-digit {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            font-weight: bold;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .flip-digit::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .flip-digit.flip-animation {
+            animation: flip 0.6s ease-in-out;
+        }
+
+        @keyframes flip {
+            0% { transform: rotateX(0deg); }
+            50% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0deg); }
+        }
+
+        .separator {
+            color: #fff;
+            font-size: 4em;
+            font-weight: bold;
+            padding: 0 10px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+
+        /* Progress Section - Hidden by default */
+        .progress-section {
+            width: 100%;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        .progress-section.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #fff;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .stat-divider {
+            width: 3px;
+            height: 40px;
+            background: linear-gradient(180deg, transparent, #fff, transparent);
+            opacity: 0.3;
+        }
+
+        .stat-label {
+            color: #8b92b9;
+            font-size: 0.8em;
+        }
+
+        .stat-value {
+            color: #ffd60a;
+            font-size: 1.1em;
+            text-shadow: 0 0 20px rgba(255, 214, 10, 0.5);
+        }
+
+        /* Progress bar container */
+        .progress-container {
+            width: 100%;
+            height: 100px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 50px;
+            padding: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                inset 0 0 20px rgba(0,0,0,0.5),
+                0 0 40px rgba(131, 56, 236, 0.3);
+            transition: all 0.5s;
+        }
+
+        /* Progressive heat levels */
+        .progress-container.warm {
+            animation: warm-pulse 2s infinite;
+            box-shadow:
+                inset 0 0 15px rgba(255,200,0,0.3),
+                0 0 30px rgba(255, 200, 0, 0.3);
+        }
+
+        @keyframes warm-pulse {
+            0%, 100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+            50% {
+                transform: scale(1.01);
+                filter: brightness(1.1);
+            }
+        }
+
+        .progress-container.heating {
+            animation: heating 1s infinite;
+            box-shadow:
+                inset 0 0 20px rgba(255,150,0,0.5),
+                0 0 40px rgba(255, 150, 0, 0.4),
+                0 0 60px rgba(255, 100, 0, 0.3);
+        }
+
+        @keyframes heating {
+            0%, 100% {
+                transform: scale(1) rotate(0deg);
+            }
+            25% { transform: scale(1.015) rotate(0.5deg); }
+            50% { transform: scale(1.02) rotate(-0.5deg); }
+            75% { transform: scale(1.015) rotate(0.5deg); }
+        }
+
+        .progress-container.burning {
+            animation: burning 0.5s infinite;
+            box-shadow:
+                inset 0 0 30px rgba(255,50,0,0.7),
+                0 0 50px rgba(255, 100, 0, 0.6),
+                0 0 80px rgba(255, 50, 0, 0.5),
+                0 0 120px rgba(255, 0, 0, 0.3);
+        }
+
+        @keyframes burning {
+            0%, 100% {
+                transform: scale(1) translateX(0);
+                filter: hue-rotate(0deg) brightness(1);
+            }
+            25% {
+                transform: scale(1.03) translateX(-3px);
+                filter: hue-rotate(10deg) brightness(1.2);
+            }
+            50% {
+                transform: scale(1.05) translateX(3px);
+                filter: hue-rotate(-10deg) brightness(1.3);
+            }
+            75% {
+                transform: scale(1.03) translateX(-3px);
+                filter: hue-rotate(5deg) brightness(1.2);
+            }
+        }
+
+        .progress-container.fire {
+            animation: fire-shake 0.15s infinite, fire-pulse 0.3s infinite;
+            box-shadow:
+                inset 0 0 40px rgba(255,0,0,0.8),
+                0 0 60px rgba(255, 50, 0, 0.7),
+                0 0 100px rgba(255, 0, 0, 0.6),
+                0 0 150px rgba(255, 100, 0, 0.4),
+                0 -20px 40px rgba(255, 50, 0, 0.5);
+        }
+
+        @keyframes fire-shake {
+            0%, 100% { transform: translateX(0) translateY(0) scale(1); }
+            20% { transform: translateX(-3px) translateY(-2px) scale(1.02); }
+            40% { transform: translateX(3px) translateY(-1px) scale(1.04); }
+            60% { transform: translateX(-2px) translateY(-3px) scale(1.03); }
+            80% { transform: translateX(2px) translateY(-2px) scale(1.02); }
+        }
+
+        @keyframes fire-pulse {
+            0%, 100% {
+                filter: brightness(1) contrast(1);
+            }
+            50% {
+                filter: brightness(1.5) contrast(1.2);
+            }
+        }
+
+        .progress-bar {
+            height: 100%;
+            border-radius: 40px;
+            background: linear-gradient(90deg, #ff006e, #8338ec, #3a86ff);
+            background-size: 300% 100%;
+            animation: gradient 3s ease infinite;
+            transition: width 0.5s ease;
+            position: relative;
+            min-width: 80px;
+        }
+
+        /* Progressive bar colors */
+        .progress-bar.warm-mode {
+            background: linear-gradient(90deg, #ffaa00, #ff8800, #ffaa00, #ff8800);
+            background-size: 400% 100%;
+            animation: gradient 2s ease infinite;
+        }
+
+        .progress-bar.hot-mode {
+            background: linear-gradient(90deg, #ff8800, #ff6600, #ff4400, #ff6600);
+            background-size: 400% 100%;
+            animation: gradient 1.5s ease infinite, subtle-glow 1s infinite;
+        }
+
+        .progress-bar.burning-mode {
+            background: linear-gradient(90deg, #ff4400, #ff2200, #ff0000, #ff2200, #ff4400);
+            background-size: 400% 100%;
+            animation: gradient 1s ease infinite, fire-glow 0.5s infinite;
+        }
+
+        .progress-bar.fire-mode {
+            background: linear-gradient(90deg, #ff0000, #ff4500, #ffff00, #ff6347, #ff0000);
+            background-size: 400% 100%;
+            animation: gradient 0.5s ease infinite, intense-fire-glow 0.3s infinite;
+            filter: drop-shadow(0 0 20px rgba(255, 50, 0, 0.8));
+        }
+
+        @keyframes subtle-glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+
+        @keyframes fire-glow {
+            0%, 100% {
+                filter: brightness(1) saturate(1);
+                transform: scaleY(1);
+            }
+            50% {
+                filter: brightness(1.3) saturate(1.2);
+                transform: scaleY(1.02);
+            }
+        }
+
+        @keyframes intense-fire-glow {
+            0%, 100% {
+                filter: brightness(1.2) saturate(1.2) drop-shadow(0 0 20px rgba(255, 50, 0, 0.8));
+                transform: scaleY(1);
+            }
+            25% {
+                filter: brightness(1.5) saturate(1.4) drop-shadow(0 0 30px rgba(255, 0, 0, 1));
+                transform: scaleY(1.03);
+            }
+            50% {
+                filter: brightness(1.8) saturate(1.6) drop-shadow(0 0 40px rgba(255, 100, 0, 1));
+                transform: scaleY(1.05);
+            }
+            75% {
+                filter: brightness(1.5) saturate(1.4) drop-shadow(0 0 30px rgba(255, 50, 0, 1));
+                transform: scaleY(1.03);
+            }
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .progress-text {
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Fire particles for 90%+ */
+        .fire-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, #ff6347, transparent);
+            border-radius: 50%;
+            animation: fire-rise 2s infinite;
+        }
+
+        @keyframes fire-rise {
+            0% {
+                bottom: 0;
+                opacity: 1;
+                transform: translateX(0) scale(1) rotate(0deg);
+            }
+            100% {
+                bottom: 100%;
+                opacity: 0;
+                transform: translateX(var(--offset)) scale(0.3) rotate(180deg);
+            }
+        }
+
+        @keyframes heat-rise {
+            0% {
+                transform: translateY(0) scaleY(1);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-40px) scaleY(2);
+                opacity: 0;
+            }
+        }
+
+        @keyframes smoke-rise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.3;
+            }
+            100% {
+                transform: translateY(-100px) scale(3);
+                opacity: 0;
+            }
+        }
+
+        @keyframes spark-fly {
+            0% {
+                transform: translateY(0) translateX(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-50px) translateX(30px) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Remaining info */
+        .remaining-info {
+            margin-top: 35px;
+            font-size: 2.2em;
+            color: rgba(255,255,255,0.9);
+            transition: all 0.3s;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.8),
+                        0 0 40px rgba(139, 92, 246, 0.3);
+        }
+
+        #remainingLikes {
+            color: #ffd60a;
+            font-size: 1.4em;
+            font-weight: 900;
+            text-shadow: 0 0 30px rgba(255, 214, 10, 0.8),
+                        0 0 60px rgba(255, 214, 10, 0.4);
+            margin: 0 8px;
+            display: inline-block;
+            animation: glow-number 2s ease-in-out infinite;
+        }
+
+        @keyframes glow-number {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.05); filter: brightness(1.2); }
+        }
+
+        .remaining-info.urgent {
+            animation: pulse 1s infinite;
+        }
+
+        .remaining-info.urgent #remainingLikes {
+            color: #ff6347;
+            text-shadow: 0 0 30px rgba(255, 99, 71, 1),
+                        0 0 60px rgba(255, 50, 0, 0.6);
+            animation: urgent-pulse 0.5s infinite;
+        }
+
+        @keyframes urgent-pulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.1); filter: brightness(1.5); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        /* Winners marquee */
+        .winners-marquee {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(10,10,10,0.95) 100%);
+            backdrop-filter: blur(15px);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            border-top: 2px solid rgba(255,214,10,0.3);
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        .marquee-content {
+            display: flex;
+            white-space: nowrap;
+            position: absolute;
+            /* Animation will be handled by JavaScript */
+        }
+
+        .winner-item {
+            padding: 0 60px;
+            font-size: 1.8em;
+            color: #ffd60a;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-shadow: 0 2px 10px rgba(255,214,10,0.5),
+                        0 0 30px rgba(255,214,10,0.3);
+        }
+
+        /* Control buttons */
+        .control-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+            -webkit-app-region: no-drag;
+        }
+
+        .control-btn {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.05);
+        }
+
+        /* Winner announcement */
+        .winner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .winner-gif-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.3;
+            filter: blur(2px);
+            z-index: 1;
+        }
+
+        .winner-overlay.show {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .winner-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border-radius: 20px;
+            padding: 60px 80px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8),
+                       0 0 120px rgba(255, 215, 0, 0.3);
+            border: 2px solid #FFD700;
+            position: relative;
+            animation: scaleIn 0.5s ease-out;
+            z-index: 10;
+        }
+
+        @keyframes scaleIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .winner-title {
+            font-size: 2em;
+            color: #888;
+            margin-bottom: 30px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .winner-name {
+            font-size: 5em;
+            color: #FFD700;
+            font-weight: 900;
+            margin: 30px 0;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .winner-prize {
+            font-size: 2.5em;
+            color: #fff;
+            margin-top: 30px;
+            font-weight: 700;
+            background: #FFD700;
+            color: #1a1a1a;
+            padding: 15px 40px;
+            border-radius: 10px;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Money rain animation */
+        .money-rain {
+            position: fixed;
+            top: -100px;
+            font-size: 60px;
+            animation: moneyFall linear infinite;
+            z-index: 1001;
+            pointer-events: none;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+        }
+
+        @keyframes moneyFall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(calc(100vh + 100px)) rotate(360deg);
+                opacity: 0.3;
+            }
+        }
+
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Explosion effect */
+        .explosion {
+            position: fixed;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .explosion-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: explode 1s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--x), var(--y)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        /* Confetti */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ffd60a;
+            animation: confetti-fall 3s linear forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated gradient background -->
+    <div class="animated-bg">
+        <div class="gradient-orb"></div>
+        <div class="gradient-orb"></div>
+        <div class="gradient-orb"></div>
+        <div class="gradient-orb"></div>
+    </div>
+
+    <!-- Wave animations from bottom -->
+    <div class="wave-container">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="wave"></div>
+    </div>
+
+    <div class="bg-animation" id="bgAnimation"></div>
+
+    <div class="control-buttons">
+        <button class="control-btn" onclick="toggleFullscreen()">⛶ Tam Ekran</button>
+    </div>
+
+    <div class="container">
+        <h1 id="mainTitle">CANLI YAYIN BAŞLADI</h1>
+
+        <!-- Flip Counter -->
+        <div class="flip-counter" id="flipCounter">
+            <!-- Digits will be dynamically generated -->
+        </div>
+
+        <!-- Progress Section (Hidden by default) -->
+        <div class="progress-section" id="progressSection">
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">HEDEF</span>
+                    <span class="stat-value" id="nextTarget">-</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-label">KATILIMCI</span>
+                    <span class="stat-value" id="participants" style="color: #3a86ff;">0</span>
+                </div>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar" style="width: 0%">
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+            </div>
+
+            <div class="remaining-info" id="remainingInfo">
+                SONRAKİ ÖDÜLE <span id="remainingLikes">-</span> BEĞENİ KALDI!
+            </div>
+        </div>
+    </div>
+
+    <!-- Winners Marquee -->
+    <div class="winners-marquee" id="winnersMarquee" style="display: none;">
+        <div class="marquee-content" id="marqueeContent">
+            <!-- Winners will be added here -->
+        </div>
+    </div>
+
+    <div class="winner-overlay" id="winnerOverlay">
+        <div class="winner-card">
+            <div class="winner-title">💰 KAZANAN BELİRLENDİ 💰</div>
+            <div class="winner-name" id="winnerName">-</div>
+            <div class="winner-prize" id="winnerPrize">-</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:3001');
+        let currentLikes = 0;
+        let targetLikes = 0;
+        let rewardSystemActive = false;
+        let winnersList = [];
+
+        // Create background particles
+        function createParticles() {
+            const bg = document.getElementById('bgAnimation');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.width = particle.style.height = Math.random() * 5 + 2 + 'px';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (Math.random() * 20 + 10) + 's';
+                bg.appendChild(particle);
+            }
+        }
+
+        // Flip counter functions
+        function createFlipCounter() {
+            const counter = document.getElementById('flipCounter');
+            counter.innerHTML = '';
+            const likeStr = currentLikes.toString().padStart(7, '0'); // Always 7 digits
+
+            for (let i = 0; i < likeStr.length; i++) {
+                // Add separator after 1st and 4th digit (for millions format)
+                if (i === 1 || i === 4) {
+                    const separator = document.createElement('div');
+                    separator.className = 'separator';
+                    separator.textContent = '.';
+                    counter.appendChild(separator);
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flip-digit-wrapper';
+                const digit = document.createElement('div');
+                digit.className = 'flip-digit';
+                digit.textContent = likeStr[i];
+                digit.id = `digit-${i}`;
+                wrapper.appendChild(digit);
+                counter.appendChild(wrapper);
+            }
+        }
+
+        function updateFlipCounter(newLikes) {
+            // If counter structure changed, recreate it
+            if (!document.getElementById('digit-0')) {
+                currentLikes = newLikes;
+                createFlipCounter();
+                return;
+            }
+
+            const oldStr = currentLikes.toString().padStart(7, '0');
+            const newStr = newLikes.toString().padStart(7, '0');
+
+            currentLikes = newLikes;
+
+            for (let i = 0; i < newStr.length; i++) {
+                if (oldStr[i] !== newStr[i]) {
+                    const digit = document.getElementById(`digit-${i}`);
+                    if (digit) {
+                        digit.classList.add('flip-animation');
+                        setTimeout(() => {
+                            digit.textContent = newStr[i];
+                        }, 300);
+                        setTimeout(() => {
+                            digit.classList.remove('flip-animation');
+                        }, 600);
+                    }
+                }
+            }
+        }
+
+        function animateCounterToTarget(target) {
+            const duration = 2000; // 2 seconds
+            const start = 0;
+            const startTime = Date.now();
+
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const current = Math.floor(start + (target - start) * progress);
+
+                updateFlipCounter(current);
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    updateFlipCounter(target);
+                }
+            }
+
+            update();
+        }
+
+        // Update progress bar
+        function updateProgressBar(percentage) {
+            const bar = document.getElementById('progressBar');
+            const text = document.getElementById('progressText');
+            const container = document.getElementById('progressContainer');
+            const remainingInfo = document.getElementById('remainingInfo');
+
+            // Ensure minimum width for visibility
+            const displayWidth = Math.max(percentage, 5);
+            bar.style.width = displayWidth + '%';
+            // Show decimal precision for accurate progress display
+            text.textContent = percentage.toFixed(2) + '%';
+
+            // Remove all special classes first
+            container.classList.remove('warm', 'heating', 'burning', 'fire');
+            bar.classList.remove('warm-mode', 'hot-mode', 'burning-mode', 'fire-mode');
+            remainingInfo.classList.remove('urgent');
+
+            // Progressive effects based on percentage
+            if (percentage >= 95) {
+                // EXTREME: Intense fire effect
+                container.classList.add('fire');
+                bar.classList.add('fire-mode');
+                remainingInfo.classList.add('urgent');
+                createFireParticles(5); // More particles
+                createSmokeEffect();
+                createSparkEffect();
+            } else if (percentage >= 85) {
+                // HOT: Burning effect
+                container.classList.add('burning');
+                bar.classList.add('burning-mode');
+                remainingInfo.classList.add('urgent');
+                createFireParticles(3);
+                createSparkEffect();
+            } else if (percentage >= 70) {
+                // HEATING: Strong heat
+                container.classList.add('heating');
+                bar.classList.add('hot-mode');
+                remainingInfo.classList.add('urgent');
+                createHeatWaves();
+            } else if (percentage >= 50) {
+                // WARM: Starting to heat up
+                container.classList.add('warm');
+                bar.classList.add('warm-mode');
+                createHeatWaves();
+            }
+
+            // Explosion at 100%
+            if (percentage >= 100) {
+                createExplosion();
+            }
+        }
+
+        // Create fire particles
+        function createFireParticles(intensity = 3) {
+            const container = document.getElementById('progressContainer');
+            const existingParticles = container.querySelectorAll('.fire-particle');
+
+            if (existingParticles.length < intensity * 3) {
+                for (let i = 0; i < intensity; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'fire-particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.width = particle.style.height = (Math.random() * 15 + 5) + 'px';
+                    particle.style.setProperty('--offset', (Math.random() - 0.5) * 100 + 'px');
+                    particle.style.animationDelay = Math.random() * 2 + 's';
+                    particle.style.animationDuration = (Math.random() * 1 + 1) + 's';
+
+                    // Random fire colors
+                    const colors = ['#ff0000', '#ff4500', '#ff6347', '#ffa500', '#ffff00'];
+                    particle.style.background = `radial-gradient(circle, ${colors[Math.floor(Math.random() * colors.length)]}, transparent)`;
+
+                    container.appendChild(particle);
+                    setTimeout(() => particle.remove(), 2000);
+                }
+            }
+        }
+
+        // Create heat wave effect
+        function createHeatWaves() {
+            const container = document.getElementById('progressContainer');
+            if (!container.querySelector('.heat-wave')) {
+                const wave = document.createElement('div');
+                wave.className = 'heat-wave';
+                wave.style.cssText = `
+                    position: absolute;
+                    top: -20px;
+                    left: 0;
+                    width: 100%;
+                    height: 40px;
+                    background: linear-gradient(0deg, transparent, rgba(255,150,0,0.1), transparent);
+                    animation: heat-rise 2s infinite;
+                    pointer-events: none;
+                `;
+                container.appendChild(wave);
+                setTimeout(() => wave.remove(), 2000);
+            }
+        }
+
+        // Create smoke effect
+        function createSmokeEffect() {
+            const container = document.getElementById('progressContainer');
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const smoke = document.createElement('div');
+                    smoke.style.cssText = `
+                        position: absolute;
+                        bottom: 50%;
+                        left: ${Math.random() * 100}%;
+                        width: ${Math.random() * 30 + 20}px;
+                        height: ${Math.random() * 30 + 20}px;
+                        background: radial-gradient(circle, rgba(100,100,100,0.3), transparent);
+                        border-radius: 50%;
+                        animation: smoke-rise 3s forwards;
+                        pointer-events: none;
+                    `;
+                    container.appendChild(smoke);
+                    setTimeout(() => smoke.remove(), 3000);
+                }, i * 200);
+            }
+        }
+
+        // Create spark effect
+        function createSparkEffect() {
+            const container = document.getElementById('progressContainer');
+            for (let i = 0; i < 5; i++) {
+                const spark = document.createElement('div');
+                spark.style.cssText = `
+                    position: absolute;
+                    bottom: ${Math.random() * 100}%;
+                    left: ${Math.random() * 100}%;
+                    width: 2px;
+                    height: ${Math.random() * 15 + 5}px;
+                    background: linear-gradient(0deg, transparent, #ffff00, #ff6347, transparent);
+                    transform: rotate(${Math.random() * 360}deg);
+                    animation: spark-fly ${Math.random() * 0.5 + 0.5}s forwards;
+                    pointer-events: none;
+                `;
+                container.appendChild(spark);
+                setTimeout(() => spark.remove(), 1000);
+            }
+        }
+
+        // Create explosion effect
+        function createExplosion() {
+            const container = document.getElementById('progressContainer');
+            const rect = container.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = centerX + 'px';
+            explosion.style.top = centerY + 'px';
+
+            const colors = ['#ff006e', '#8338ec', '#3a86ff', '#ffd60a', '#00ff88'];
+
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'explosion-particle';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.setProperty('--x', (Math.random() - 0.5) * 300 + 'px');
+                particle.style.setProperty('--y', (Math.random() - 0.5) * 300 + 'px');
+                explosion.appendChild(particle);
+            }
+
+            document.body.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 1000);
+        }
+
+        // Marquee animation variables
+        let marqueeAnimation = null;
+        let marqueePosition = 0;
+        const MARQUEE_SPEED = 80; // pixels per second - sabit hız
+        let lastWinnersCount = 0; // Track winner count
+
+        // Update winners marquee
+        function updateWinnersMarquee() {
+            if (winnersList.length > 0) {
+                document.getElementById('winnersMarquee').style.display = 'flex';
+                const content = document.getElementById('marqueeContent');
+
+                // Only update content if winners list actually changed
+                if (winnersList.length !== lastWinnersCount) {
+                    lastWinnersCount = winnersList.length;
+
+                    // Create winner items
+                    const winnersHTML = winnersList.map((w, index) =>
+                        `<span class="winner-item">🏆 ${index + 1}. ${w.name} - ${w.prize}</span>`
+                    ).join('');
+
+                    // Triple content for seamless scrolling
+                    content.innerHTML = winnersHTML + winnersHTML + winnersHTML;
+                }
+
+                // Only start animation if it's not already running
+                if (!marqueeAnimation) {
+                    startMarqueeAnimation();
+                }
+            }
+        }
+
+        // Start marquee animation with constant speed
+        function startMarqueeAnimation() {
+            // Stop any existing animation
+            if (marqueeAnimation) {
+                cancelAnimationFrame(marqueeAnimation);
+            }
+
+            const marquee = document.getElementById('marqueeContent');
+            const marqueeContainer = document.getElementById('winnersMarquee');
+
+            if (!marquee || !marqueeContainer) return;
+
+            // Get actual content width (1/3 of total since we tripled)
+            const contentWidth = marquee.scrollWidth / 3;
+
+            // Start position
+            marqueePosition = 0;
+            let lastTime = performance.now();
+
+            function animate(currentTime) {
+                const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+                lastTime = currentTime;
+
+                // Move at constant speed
+                marqueePosition -= MARQUEE_SPEED * deltaTime;
+
+                // Reset seamlessly when we've scrolled one full set
+                if (marqueePosition <= -contentWidth) {
+                    marqueePosition = 0;
+                }
+
+                // Apply transform
+                marquee.style.transform = `translateX(${marqueePosition}px)`;
+
+                // Continue animation
+                marqueeAnimation = requestAnimationFrame(animate);
+            }
+
+            marqueeAnimation = requestAnimationFrame(animate);
+        }
+
+        // Show winner
+        function showWinner(reward) {
+            const overlay = document.getElementById('winnerOverlay');
+            const name = document.getElementById('winnerName');
+            const prize = document.getElementById('winnerPrize');
+
+            name.textContent = reward.winner;
+            prize.textContent = 'ÖDÜL: ' + reward.prize;
+
+            // Add random GIF background
+            setRandomGifBackground();
+
+            overlay.classList.add('show');
+
+            // Create confetti and money rain
+            createConfetti();
+            createMoneyRain();
+
+            // Hide after 10 seconds
+            setTimeout(() => {
+                overlay.classList.remove('show');
+                // Clean up money rain and GIF
+                document.querySelectorAll('.money-rain').forEach(money => money.remove());
+                removeGifBackground();
+            }, 10000);
+        }
+
+        // GIF list - will be loaded automatically from server
+        let winnerGifs = [];
+
+        // Load GIFs from server
+        async function loadWinnerGifs() {
+            try {
+                const response = await fetch('http://localhost:3001/api/winner-gifs');
+                const data = await response.json();
+                winnerGifs = data.gifs || [];
+                console.log(`Loaded ${winnerGifs.length} GIFs:`, winnerGifs);
+            } catch (error) {
+                console.error('Error loading GIFs:', error);
+                winnerGifs = [];
+            }
+        }
+
+        // Load GIFs when page loads
+        loadWinnerGifs();
+
+        // Set random GIF background
+        function setRandomGifBackground() {
+            // Remove existing GIF if any
+            removeGifBackground();
+
+            // If no GIFs available, skip
+            if (winnerGifs.length === 0) {
+                console.log('No GIFs available in assets/winner-gifs folder');
+                return;
+            }
+
+            // Select random GIF
+            const randomGif = winnerGifs[Math.floor(Math.random() * winnerGifs.length)];
+            console.log(`Using GIF: ${randomGif}`);
+
+            // Create img element
+            const gifBg = document.createElement('img');
+            gifBg.className = 'winner-gif-bg';
+            gifBg.src = `../assets/winner-gifs/${randomGif}`;
+
+            // Add error handler in case GIF doesn't exist
+            gifBg.onerror = function() {
+                console.error(`GIF not found: ${randomGif}`);
+                this.remove();
+            };
+
+            // Add to overlay
+            const overlay = document.getElementById('winnerOverlay');
+            overlay.insertBefore(gifBg, overlay.firstChild);
+        }
+
+        // Remove GIF background
+        function removeGifBackground() {
+            const existingGif = document.querySelector('.winner-gif-bg');
+            if (existingGif) {
+                existingGif.remove();
+            }
+        }
+
+        // Create money rain effect
+        function createMoneyRain() {
+            const emojis = ['💰', '💵', '💸', '💎', '🏆'];
+            const moneyCount = 20;
+
+            for (let i = 0; i < moneyCount; i++) {
+                setTimeout(() => {
+                    const money = document.createElement('div');
+                    money.className = 'money-rain';
+                    money.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    money.style.left = Math.random() * window.innerWidth + 'px';
+                    money.style.fontSize = '50px';
+                    money.style.animationDuration = (Math.random() * 2 + 3) + 's';
+                    document.body.appendChild(money);
+
+                    // Remove after animation
+                    setTimeout(() => {
+                        money.remove();
+                    }, 5000);
+                }, i * 150);
+            }
+        }
+
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#ff006e', '#8338ec', '#3a86ff', '#ffd60a', '#00ff88', '#ff6b6b', '#4ecdc4'];
+            for (let i = 0; i < 150; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    document.body.appendChild(confetti);
+
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 20);
+            }
+        }
+
+        // Socket events
+        socket.on('state-update', (state) => {
+            rewardSystemActive = state.rewardSystemActive;
+
+            // Update title
+            if (state.progressTitle) {
+                document.getElementById('mainTitle').textContent = state.progressTitle;
+            }
+
+            // Initialize counter if needed
+            if (state.currentLikes && currentLikes === 0) {
+                createFlipCounter();
+                animateCounterToTarget(state.currentLikes);
+            } else if (state.currentLikes) {
+                updateFlipCounter(state.currentLikes);
+            }
+
+            // Show/hide progress section based on reward system status
+            const progressSection = document.getElementById('progressSection');
+            if (rewardSystemActive) {
+                progressSection.classList.add('active');
+                document.getElementById('nextTarget').textContent = state.nextTarget ? state.nextTarget.toLocaleString() : 'Tamamlandı';
+                document.getElementById('participants').textContent = state.chatParticipants ? state.chatParticipants.length : 0;
+
+                if (state.nextTarget) {
+                    const remaining = state.nextTarget - state.currentLikes;
+                    document.getElementById('remainingLikes').textContent = remaining > 0 ? remaining.toLocaleString() : '0';
+                }
+
+                updateProgressBar(state.progress || 0);
+            } else {
+                progressSection.classList.remove('active');
+            }
+
+            // Update winners list
+            if (state.winnersList) {
+                winnersList = state.winnersList;
+                updateWinnersMarquee();
+            }
+        });
+
+        socket.on('reward-system-status', (status) => {
+            rewardSystemActive = status;
+            const progressSection = document.getElementById('progressSection');
+
+            if (status) {
+                progressSection.classList.add('active');
+            } else {
+                progressSection.classList.remove('active');
+            }
+        });
+
+        socket.on('progress-title-changed', (title) => {
+            document.getElementById('mainTitle').textContent = title;
+        });
+
+        socket.on('likes-update', (likes) => {
+            updateFlipCounter(likes);
+        });
+
+        socket.on('participants-update', (participants) => {
+            document.getElementById('participants').textContent = participants.length;
+        });
+
+        socket.on('progress-update', (data) => {
+            if (rewardSystemActive) {
+                updateProgressBar(data.percentage);
+                document.getElementById('nextTarget').textContent = data.nextTarget ? data.nextTarget.toLocaleString() : 'Tamamlandı';
+
+                if (data.nextTarget) {
+                    const remaining = data.nextTarget - data.currentLikes;
+                    document.getElementById('remainingLikes').textContent = remaining > 0 ? remaining.toLocaleString() : '0';
+                }
+            }
+
+            updateFlipCounter(data.currentLikes);
+        });
+
+        socket.on('reward-achieved', (reward) => {
+            showWinner(reward);
+        });
+
+        socket.on('winners-update', (winners) => {
+            winnersList = winners;
+            updateWinnersMarquee();
+        });
+
+        // All rewards completed handler
+        socket.on('all-rewards-completed', () => {
+            // Show completion message
+            const overlay = document.getElementById('winnerOverlay');
+            const name = document.getElementById('winnerName');
+            const prize = document.getElementById('winnerPrize');
+
+            name.textContent = 'TÜM ÖDÜLLER DAĞITILDI! 🎊';
+            prize.textContent = 'Tebrikler Tüm Kazananlar!';
+
+            overlay.classList.add('show');
+            createConfetti();
+
+            // Hide progress section after showing message
+            setTimeout(() => {
+                overlay.classList.remove('show');
+                // Hide progress section
+                const progressSection = document.getElementById('progressSection');
+                progressSection.classList.remove('active');
+                rewardSystemActive = false;
+            }, 5000);
+        });
+
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // ESC key handler
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        });
+
+        // Request progress updates every second
+        setInterval(() => {
+            socket.emit('get-progress');
+        }, 1000);
+
+        // Initialize
+        createParticles();
+        // Don't create counter here, wait for data
+        socket.emit('get-progress');
+    </script>
+</body>
+</html>

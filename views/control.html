@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrandGrid - YouTube Live Awards</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 100%);
+            border-bottom: 1px solid #333;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .brand-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            color: #888;
+            margin-left: 5px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            font-size: 11px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.active {
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+        }
+
+        .tabs {
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            padding: 0 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #888;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-size: 12px;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: #ccc;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .content {
+            padding: 20px;
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .stat-value.primary { color: #667eea; }
+        .stat-value.success { color: #10b981; }
+        .stat-value.warning { color: #f59e0b; }
+        .stat-value.danger { color: #ef4444; }
+
+        .panel {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .panel-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input, select {
+            background: #0d0d0d;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            color: #e0e0e0;
+            padding: 6px 10px;
+            font-size: 12px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #1a1a1a;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background: #5a67d8;
+        }
+
+        button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        .btn-danger { background: #ef4444; }
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+
+        .btn-secondary { background: #374151; }
+        .btn-secondary:hover { background: #4b5563; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead {
+            background: #0d0d0d;
+        }
+
+        th {
+            padding: 8px;
+            text-align: left;
+            font-weight: 500;
+            color: #888;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .achieved {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .badge-info {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+
+        .badge-primary {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .input-group label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .participant-list {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #0d0d0d;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .participant-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .participant-item:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .participant-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .participant-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .participant-badge {
+            font-size: 9px;
+        }
+
+        #log {
+            background: #0d0d0d;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 4px 6px;
+            border-left: 2px solid transparent;
+        }
+
+        .log-entry.success {
+            color: #10b981;
+            border-left-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .log-entry.error {
+            color: #ef4444;
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .log-entry.info {
+            color: #667eea;
+            border-left-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .log-entry.warning {
+            color: #f59e0b;
+            border-left-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.05);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .btn-progress {
+            background: linear-gradient(90deg, #667eea, #a855f7);
+        }
+
+        .btn-progress:hover {
+            background: linear-gradient(90deg, #5a67d8, #9333ea);
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            gap: 5px;
+            background: #0d0d0d;
+            padding: 3px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.05);
+            color: #ccc;
+        }
+
+        .mode-content {
+            display: none;
+        }
+
+        .mode-content.active {
+            display: block;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        .auto-info {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: #a5b4fc;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="brand">
+            <div class="brand-logo">BG</div>
+            <div>
+                <span class="brand-name">BrandGrid</span>
+                <span class="brand-subtitle">YouTube Live Awards</span>
+            </div>
+        </div>
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Bağlantı Yok</span>
+            </div>
+            <div class="status-item">
+                <span>🕒</span>
+                <span id="currentTime">00:00:00</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+        <div class="tab" onclick="switchTab('awards')">Ödüller & Kazananlar</div>
+        <div class="tab" onclick="switchTab('participants')">Katılımcılar</div>
+        <div class="tab" onclick="switchTab('logs')">Loglar</div>
+    </div>
+
+    <div class="content">
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <!-- Yayın Ayarları -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>📺</span>
+                        <span>Yayın Ayarları</span>
+                    </div>
+                </div>
+                <div class="controls-row">
+                    <div class="input-group" style="flex: 2;">
+                        <label>YouTube Video ID veya URL</label>
+                        <input type="text" id="videoId" placeholder="Örn: jfKfPfyJRdk veya YouTube URL" value="jfKfPfyJRdk">
+                    </div>
+                    <div class="input-group" style="flex: 2;">
+                        <label>Progress Ekranı Başlığı</label>
+                        <input type="text" id="progressTitle" placeholder="CANLI YAYIN BAŞLADI" value="CANLI YAYIN BAŞLADI" oninput="updateProgressTitle()">
+                    </div>
+                </div>
+                <div class="controls-row">
+                    <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                        <button id="startBtn" class="btn-success" onclick="startMonitoring()">▶ Yayını Başlat</button>
+                        <button id="stopBtn" class="btn-danger" onclick="stopMonitoring()" disabled>⏹ Yayını Durdur</button>
+                        <button class="btn-progress" onclick="openProgress()">🎯 Progress Ekranı</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- İstatistikler -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Mevcut Beğeni</div>
+                    <div class="stat-value primary" id="currentLikes">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Başlangıç Beğeni</div>
+                    <div class="stat-value" id="startLikes">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Yayın Süresi</div>
+                    <div class="stat-value" id="streamDuration">00:00:00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Katılımcı</div>
+                    <div class="stat-value success" id="participantCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">İlerleme</div>
+                    <div class="stat-value warning" id="progress">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Sonraki Hedef</div>
+                    <div class="stat-value danger" id="nextTarget">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Kalan Beğeni</div>
+                    <div class="stat-value" id="remainingLikes">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Ödül Modu</div>
+                    <div class="stat-value" id="rewardModeDisplay">Otomatik</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>📈</span>
+                        <span>Son Aktiviteler</span>
+                    </div>
+                </div>
+                <div id="dashboardLog" style="height: 300px; overflow-y: auto; background: #0d0d0d; padding: 10px; border-radius: 4px; font-size: 11px;">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <div>Henüz aktivite yok</div>
+                        <div style="font-size: 11px; color: #666; margin-top: 5px;">Yayın başlatıldığında aktiviteler burada görünecek</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>🏆</span>
+                        <span>Son Kazananlar</span>
+                    </div>
+                </div>
+                <div id="recentWinners" style="background: #0d0d0d; padding: 10px; border-radius: 4px; min-height: 100px;">
+                    <div class="empty-state" style="padding: 20px;">
+                        <div>Henüz kazanan yok</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Awards Tab -->
+        <div id="awards" class="tab-content">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>🎁</span>
+                        <span>Ödül Sistemi</span>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="rewardSystemToggle" class="btn-success" onclick="toggleRewardSystem()">
+                            🎯 Ödül Sistemini Başlat
+                        </button>
+                        <span id="rewardSystemStatus" class="badge badge-warning">Kapalı</span>
+                    </div>
+                </div>
+
+                <!-- Mode Selector -->
+                <div class="mode-selector">
+                    <button class="mode-btn" onclick="switchRewardMode('targets')">📍 Hedefler Modu</button>
+                    <button class="mode-btn active" onclick="switchRewardMode('auto')">🔄 Otomatik Mod</button>
+                </div>
+
+                <!-- Targets Mode -->
+                <div id="targetsMode" class="mode-content">
+                    <div class="controls-row">
+                        <div class="input-group">
+                            <label>Hedef Beğeni</label>
+                            <input type="number" id="targetLikes" placeholder="100">
+                        </div>
+                        <div class="input-group" style="flex: 2;">
+                            <label>Ödül</label>
+                            <input type="text" id="prize" placeholder="250 TL">
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button onclick="addReward()">+ Ödül Ekle</button>
+                        </div>
+                    </div>
+
+                    <table id="rewardsTable" style="margin-top: 15px;">
+                        <thead>
+                            <tr>
+                                <th width="80">Hedef</th>
+                                <th>Ödül</th>
+                                <th width="100">Durum</th>
+                                <th>Kazanan</th>
+                                <th width="60">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Auto Mode -->
+                <div id="autoMode" class="mode-content active">
+                    <div class="controls-row">
+                        <div class="input-group">
+                            <label>Her X Beğenide</label>
+                            <input type="number" id="autoInterval" placeholder="100" value="100" oninput="updateAutoInterval()">
+                        </div>
+                        <div class="input-group" style="flex: 2;">
+                            <label>Verilecek Ödül</label>
+                            <input type="text" id="autoPrize" placeholder="100 TL" value="100 TL" oninput="updateAutoPrize()">
+                        </div>
+                    </div>
+
+                    <div class="auto-info">
+                        <strong>ℹ️ Otomatik Mod Bilgisi:</strong><br>
+                        Sistem, belirlediğiniz beğeni aralığında otomatik olarak ödül dağıtacaktır.<br>
+                        Örnek: Her 100 beğenide bir ödül (100, 200, 300, 400...)
+                    </div>
+
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #2a2a2a;">
+                        <h3 style="color: #ffd60a; margin-bottom: 15px;">🏆 Kazananlar Listesi</h3>
+                        <table id="autoRewardsTable" style="display: table;">
+                            <thead>
+                                <tr>
+                                    <th width="60">Seviye</th>
+                                    <th width="80">Beğeni</th>
+                                    <th>Ödül</th>
+                                    <th width="100">Durum</th>
+                                    <th>Kazanan</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Participants Tab -->
+        <div id="participants" class="tab-content">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>👥</span>
+                        <span>Chat Katılımcıları</span>
+                    </div>
+                    <div>
+                        <span class="badge badge-info" id="participantBadge">0 Katılımcı</span>
+                    </div>
+                </div>
+                <div class="participant-list" id="participantList">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <div>Henüz katılımcı yok</div>
+                        <div style="font-size: 11px; color: #666; margin-top: 5px;">Yayın başladığında katılımcılar burada görünecek</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logs" class="tab-content">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span>📝</span>
+                        <span>Sistem Logları</span>
+                    </div>
+                    <div>
+                        <button class="btn-sm btn-secondary" onclick="clearLogs()">Temizle</button>
+                    </div>
+                </div>
+                <div id="log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:3001');
+        let rewards = [];
+        let autoRewards = [];
+        let participants = [];
+        let winners = [];
+        let rewardMode = 'auto'; // 'targets' or 'auto' - default auto
+        let rewardSystemActive = false;
+        let autoModeActive = true;
+        let streamStartTime = null;
+        let streamInterval = null;
+        let autoInterval = 100;
+        let autoPrize = '100 TL';
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // Reward Mode switching
+        function switchRewardMode(mode) {
+            // Ödül sistemi aktifken mod değiştirilmesin
+            if (rewardSystemActive) {
+                alert('⚠️ Ödül sistemi aktifken mod değiştirilemez!\nÖnce ödül sistemini durdurun.');
+                return;
+            }
+
+            // Aynı moda tekrar tıklandıysa bir şey yapma
+            if (rewardMode === mode) return;
+
+            rewardMode = mode;
+            socket.emit('set-reward-mode', mode);
+            document.getElementById('rewardModeDisplay').textContent = mode === 'auto' ? 'Otomatik' : 'Hedefler';
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.mode-content').forEach(content => content.classList.remove('active'));
+
+            if (mode === 'targets') {
+                document.querySelector('.mode-btn:nth-child(1)').classList.add('active');
+                document.getElementById('targetsMode').classList.add('active');
+                document.getElementById('rewardModeDisplay').textContent = 'Hedefler';
+            } else {
+                document.querySelector('.mode-btn:nth-child(2)').classList.add('active');
+                document.getElementById('autoMode').classList.add('active');
+                document.getElementById('rewardModeDisplay').textContent = 'Otomatik';
+                document.getElementById('autoRewardsTable').style.display = 'table';
+                // updateAutoInterval çağırmayı kaldırdık - sadece değerler değiştiğinde çağrılmalı
+            }
+        }
+
+        // Auto mode toggle
+        function updateAutoInterval() {
+            const autoInterval = parseInt(document.getElementById('autoInterval').value) || 100;
+            const autoPrize = document.getElementById('autoPrize').value || '100 TL';
+
+            socket.emit('set-auto-config', {
+                interval: autoInterval,
+                prize: autoPrize
+            });
+
+            // Otomatik moddaysa progress'i güncelle
+            if (rewardMode === 'auto') {
+                socket.emit('get-progress');
+                addLog(`Otomatik aralık güncellendi: ${autoInterval}`, 'info');
+            }
+        }
+
+        function updateAutoPrize() {
+            const autoInterval = parseInt(document.getElementById('autoInterval').value) || 100;
+            const autoPrize = document.getElementById('autoPrize').value || '100 TL';
+
+            socket.emit('set-auto-config', {
+                interval: autoInterval,
+                prize: autoPrize
+            });
+
+            if (rewardMode === 'auto') {
+                addLog(`Otomatik ödül güncellendi: ${autoPrize}`, 'info');
+            }
+        }
+
+        // Toggle reward system
+        function toggleRewardSystem() {
+            socket.emit('toggle-reward-system');
+        }
+
+        // Clock
+        setInterval(() => {
+            document.getElementById('currentTime').textContent = new Date().toLocaleTimeString('tr-TR');
+        }, 1000);
+
+        // Logging
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('log');
+            const dashboardLog = document.getElementById('dashboardLog');
+            const time = new Date().toLocaleTimeString('tr-TR');
+
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `[${time}] ${message}`;
+
+            log.insertBefore(entry.cloneNode(true), log.firstChild);
+
+            // Dashboard'a da ekle
+            if (dashboardLog.querySelector('.empty-state')) {
+                dashboardLog.innerHTML = '';
+            }
+            dashboardLog.insertBefore(entry, dashboardLog.firstChild);
+
+            // Limit logs
+            if (log.children.length > 100) log.removeChild(log.lastChild);
+            if (dashboardLog.children.length > 20) dashboardLog.removeChild(dashboardLog.lastChild);
+        }
+
+        function clearLogs() {
+            document.getElementById('log').innerHTML = '';
+            addLog('Loglar temizlendi', 'info');
+        }
+
+        // Rewards
+        function addReward() {
+            const target = parseInt(document.getElementById('targetLikes').value);
+            const prize = document.getElementById('prize').value;
+
+            if (!target || target <= 0) {
+                addLog('Geçerli bir hedef girin!', 'error');
+                return;
+            }
+
+            if (!prize) {
+                addLog('Ödül boş olamaz!', 'error');
+                return;
+            }
+
+            socket.emit('add-reward', { target, prize });
+            document.getElementById('targetLikes').value = '';
+            document.getElementById('prize').value = '';
+            addLog(`Ödül eklendi: ${target} beğenide ${prize}`, 'success');
+        }
+
+        function removeReward(index) {
+            socket.emit('remove-reward', index);
+            addLog('Ödül silindi', 'info');
+        }
+
+        function updateRewardsTable() {
+            const tbody = document.querySelector('#rewardsTable tbody');
+            tbody.innerHTML = '';
+
+            rewards.forEach((reward, index) => {
+                const row = tbody.insertRow();
+
+                row.insertCell(0).innerHTML = `<strong>${reward.target}</strong>`;
+                row.insertCell(1).textContent = reward.prize;
+
+                const statusCell = row.insertCell(2);
+                if (reward.achieved) {
+                    statusCell.innerHTML = '<span class="badge badge-success">Kazanıldı</span>';
+                } else {
+                    statusCell.innerHTML = '<span class="badge badge-warning">Bekliyor</span>';
+                }
+
+                // Kazanan sütunu ekle
+                row.insertCell(3).textContent = reward.winner || '-';
+
+                const actionCell = row.insertCell(4);
+                if (!reward.achieved) {
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Sil';
+                    btn.className = 'btn-sm btn-secondary';
+                    btn.onclick = () => removeReward(index);
+                    actionCell.appendChild(btn);
+                }
+            });
+        }
+
+        function updateAutoRewardsTable(autoRewards) {
+            const tbody = document.querySelector('#autoRewardsTable tbody');
+            tbody.innerHTML = '';
+
+            autoRewards.forEach((reward, index) => {
+                const row = tbody.insertRow();
+                if (reward.achieved) row.className = 'achieved';
+
+                row.insertCell(0).textContent = `Seviye ${index + 1}`;
+                row.insertCell(1).innerHTML = `<strong>${reward.target}</strong>`;
+                row.insertCell(2).textContent = reward.prize;
+
+                const statusCell = row.insertCell(3);
+                statusCell.innerHTML = reward.achieved ?
+                    '<span class="badge badge-success">Kazanıldı</span>' :
+                    '<span class="badge badge-warning">Bekliyor</span>';
+
+                row.insertCell(4).textContent = reward.winner || '-';
+            });
+        }
+
+        function updateWinnersTable() {
+            const tbody = document.querySelector('#winnersTable tbody');
+            tbody.innerHTML = '';
+
+            // Hem normal rewards hem de autoRewards'dan achieved olanları al
+            let allAchievedRewards = [];
+
+            // Normal rewards'dan achieved olanları ekle
+            if (rewards && rewards.length > 0) {
+                allAchievedRewards = allAchievedRewards.concat(rewards.filter(r => r.achieved));
+            }
+
+            // Auto rewards'dan achieved olanları ekle
+            if (autoRewards && autoRewards.length > 0) {
+                allAchievedRewards = allAchievedRewards.concat(autoRewards.filter(r => r.achieved));
+            }
+
+            if (allAchievedRewards.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">Henüz kazanan yok</td></tr>';
+                document.getElementById('winnerCount').textContent = '0';
+                document.getElementById('totalWinnersCount').textContent = '0 Kazanan';
+                return;
+            }
+
+            allAchievedRewards.forEach(reward => {
+                const row = tbody.insertRow();
+                row.className = 'achieved';
+
+                row.insertCell(0).innerHTML = `<strong>${reward.winner}</strong>`;
+                row.insertCell(1).textContent = reward.prize;
+                row.insertCell(2).textContent = reward.target;
+
+                const date = reward.achievedAt ? new Date(reward.achievedAt).toLocaleString('tr-TR') : '-';
+                row.insertCell(3).textContent = date;
+            });
+
+            document.getElementById('winnerCount').textContent = allAchievedRewards.length;
+            document.getElementById('totalWinnersCount').textContent = allAchievedRewards.length + ' Kazanan';
+
+            // Update recent winners on dashboard
+            updateRecentWinners(allAchievedRewards.slice(-3).reverse());
+        }
+
+        function updateRecentWinners(recentWinners) {
+            const container = document.getElementById('recentWinners');
+
+            if (recentWinners.length === 0) {
+                container.innerHTML = '<div class="empty-state" style="padding: 20px;"><div>Henüz kazanan yok</div></div>';
+                return;
+            }
+
+            container.innerHTML = recentWinners.map(winner => `
+                <div style="padding: 8px; border-bottom: 1px solid #1a1a1a;">
+                    <strong>${winner.winner}</strong> - ${winner.prize}
+                    <span style="color: #666; font-size: 10px;">(${winner.target} beğeni)</span>
+                </div>
+            `).join('');
+        }
+
+        function updateParticipantsList() {
+            const list = document.getElementById('participantList');
+            const badge = document.getElementById('participantBadge');
+
+            badge.textContent = `${participants.length} Katılımcı`;
+            document.getElementById('participantCount').textContent = participants.length;
+
+            if (participants.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <div>Henüz katılımcı yok</div>
+                        <div style="font-size: 11px; color: #666; margin-top: 5px;">Yayın başladığında katılımcılar burada görünecek</div>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = '';
+            participants.forEach(participant => {
+                const item = document.createElement('div');
+                item.className = 'participant-item';
+
+                const isWinner = rewards.some(r => r.winner === participant);
+
+                item.innerHTML = `
+                    <div class="participant-name">
+                        <div class="participant-avatar">${participant.charAt(0).toUpperCase()}</div>
+                        <span>${participant}</span>
+                        ${isWinner ? '<span class="badge badge-success participant-badge">Kazanan</span>' : ''}
+                    </div>
+                `;
+
+                list.appendChild(item);
+            });
+        }
+
+        // Monitoring
+        function startMonitoring() {
+            const videoId = document.getElementById('videoId').value.trim();
+            if (!videoId) {
+                addLog('Video ID girin!', 'error');
+                return;
+            }
+
+            if (rewardMode === 'targets' && rewards.length === 0) {
+                addLog('En az bir ödül ekleyin veya otomatik modu aktifleyin!', 'error');
+                switchTab('awards');
+                return;
+            }
+
+            let cleanId = videoId;
+            if (videoId.includes('youtube.com') || videoId.includes('youtu.be')) {
+                if (videoId.includes('v=')) {
+                    cleanId = videoId.split('v=')[1].split('&')[0];
+                } else if (videoId.includes('youtu.be/')) {
+                    cleanId = videoId.split('youtu.be/')[1].split('?')[0];
+                }
+            }
+
+            socket.emit('set-video', cleanId);
+
+            const progressTitle = document.getElementById('progressTitle').value || 'CANLI YAYIN BAŞLADI';
+            socket.emit('set-progress-title', progressTitle);
+
+            socket.emit('start-monitoring');
+
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('videoId').disabled = true;
+
+            // Start stream timer
+            streamStartTime = Date.now();
+            streamInterval = setInterval(updateStreamDuration, 1000);
+
+            addLog(`Yayın takibi başlatıldı: ${cleanId}`, 'success');
+        }
+
+        function stopMonitoring() {
+            socket.emit('stop-monitoring');
+
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('videoId').disabled = false;
+
+            // Stop stream timer
+            streamStartTime = null;
+            if (streamInterval) {
+                clearInterval(streamInterval);
+                streamInterval = null;
+            }
+            document.getElementById('streamDuration').textContent = '00:00:00';
+
+            addLog('Yayın takibi durduruldu', 'warning');
+        }
+
+        function openProgress() {
+            window.electronAPI.openProgress();
+            addLog('Progress ekranı açıldı', 'info');
+        }
+
+        function updateProgressTitle() {
+            const title = document.getElementById('progressTitle').value || 'CANLI YAYIN BAŞLADI';
+            socket.emit('set-progress-title', title);
+        }
+
+        function updateStreamDuration() {
+            if (!streamStartTime) return;
+
+            const elapsed = Math.floor((Date.now() - streamStartTime) / 1000);
+            const hours = Math.floor(elapsed / 3600);
+            const minutes = Math.floor((elapsed % 3600) / 60);
+            const seconds = elapsed % 60;
+
+            const formatted =
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+
+            document.getElementById('streamDuration').textContent = formatted;
+        }
+
+        function updateStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (connected) {
+                dot.classList.add('active');
+                text.textContent = 'Bağlı';
+            } else {
+                dot.classList.remove('active');
+                text.textContent = 'Bağlantı Yok';
+            }
+        }
+
+        // Socket events
+        socket.on('connect', () => {
+            updateStatus(true);
+            addLog('Sunucu bağlantısı kuruldu', 'success');
+        });
+
+        socket.on('disconnect', () => {
+            updateStatus(false);
+            addLog('Sunucu bağlantısı kesildi', 'error');
+        });
+
+        socket.on('state-update', (state) => {
+            console.log('State update received:', state);
+
+            // Tüm state bilgilerini güncelle
+            rewards = state.rewards || [];
+            participants = state.chatParticipants || [];
+
+            // Ödül sistemi durumunu güncelle - undefined kontrolü önemli
+            if (state.rewardSystemActive !== undefined) {
+                rewardSystemActive = state.rewardSystemActive;
+                console.log('Reward system active:', rewardSystemActive);
+            }
+
+            // Video ID ve monitoring durumu
+            if (state.videoId) {
+                document.getElementById('videoId').value = state.videoId;
+            }
+
+            // Monitoring (yayın) durumu
+            if (state.monitoring !== undefined) {
+                if (state.monitoring) {
+                    // Yayın aktif
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    document.getElementById('videoId').disabled = true;
+
+                    // Stream timer'ı başlat
+                    if (!streamStartTime && state.stats && state.stats.streamStartTime) {
+                        streamStartTime = new Date(state.stats.streamStartTime).getTime();
+                        if (!streamInterval) {
+                            streamInterval = setInterval(updateStreamDuration, 1000);
+                        }
+                    }
+                } else {
+                    // Yayın pasif
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    document.getElementById('videoId').disabled = false;
+                }
+            }
+
+            // Beğeni sayıları
+            if (state.currentLikes !== undefined) {
+                document.getElementById('currentLikes').textContent = state.currentLikes.toLocaleString();
+            }
+            if (state.startLikes !== undefined) {
+                document.getElementById('startLikes').textContent = state.startLikes.toLocaleString();
+            }
+
+            // Progress title
+            if (state.progressTitle) {
+                document.getElementById('progressTitle').value = state.progressTitle;
+            }
+
+            // Ödül modunu da güncelle
+            if (state.rewardMode) {
+                rewardMode = state.rewardMode;
+                document.getElementById('rewardModeDisplay').textContent = rewardMode === 'auto' ? 'Otomatik' : 'Hedefler';
+
+                // Mod butonlarını güncelle
+                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.mode-content').forEach(content => content.classList.remove('active'));
+
+                if (rewardMode === 'targets') {
+                    document.querySelector('.mode-btn:nth-child(1)').classList.add('active');
+                    document.getElementById('targetsMode').classList.add('active');
+                } else {
+                    document.querySelector('.mode-btn:nth-child(2)').classList.add('active');
+                    document.getElementById('autoMode').classList.add('active');
+                }
+            }
+
+            // Auto mode ayarlarını güncelle
+            if (state.autoMode) {
+                if (state.autoMode.interval) {
+                    document.getElementById('autoInterval').value = state.autoMode.interval;
+                    autoInterval = state.autoMode.interval;
+                }
+                if (state.autoMode.prize) {
+                    document.getElementById('autoPrize').value = state.autoMode.prize;
+                    autoPrize = state.autoMode.prize;
+                }
+            }
+
+            updateRewardsTable();
+            updateWinnersTable();
+
+            // Update reward system status - state.rewardSystemActive ile kontrol et
+            if (state.rewardSystemActive !== undefined) {
+                if (state.rewardSystemActive) {
+                    document.getElementById('rewardSystemToggle').textContent = '⏹ Ödül Sistemini Durdur';
+                    document.getElementById('rewardSystemToggle').className = 'btn-danger';
+                    document.getElementById('rewardSystemStatus').className = 'badge badge-success';
+                    document.getElementById('rewardSystemStatus').textContent = 'Açık';
+
+                    // Disable inputs ve mod butonları
+                    document.querySelectorAll('#targetsMode input, #autoMode input').forEach(input => {
+                        input.disabled = true;
+                    });
+                    document.querySelectorAll('.mode-btn').forEach(btn => {
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
+                    });
+                    document.querySelectorAll('#targetsMode button').forEach(btn => {
+                        if (!btn.id.includes('rewardSystem')) btn.disabled = true;
+                    });
+                } else {
+                    document.getElementById('rewardSystemToggle').textContent = '🎯 Ödül Sistemini Başlat';
+                    document.getElementById('rewardSystemToggle').className = 'btn-success';
+                    document.getElementById('rewardSystemStatus').className = 'badge badge-warning';
+                    document.getElementById('rewardSystemStatus').textContent = 'Kapalı';
+
+                    // Enable inputs ve mod butonları
+                    document.querySelectorAll('#targetsMode input, #autoMode input').forEach(input => {
+                        input.disabled = false;
+                    });
+                    document.querySelectorAll('.mode-btn').forEach(btn => {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                    });
+                    document.querySelectorAll('#targetsMode button').forEach(btn => {
+                        btn.disabled = false;
+                    });
+                }
+            }
+            updateParticipantsList();
+
+            if (state.autoRewards) {
+                updateAutoRewardsTable(state.autoRewards);
+            }
+
+            document.getElementById('currentLikes').textContent = state.currentLikes.toLocaleString();
+            document.getElementById('progress').textContent = Math.round(state.progress) + '%';
+            document.getElementById('nextTarget').textContent = state.nextTarget ? state.nextTarget.toLocaleString() : 'Tamamlandı';
+
+            // Calculate remaining likes
+            if (state.nextTarget && state.currentLikes !== undefined) {
+                const remaining = state.nextTarget - state.currentLikes;
+                document.getElementById('remainingLikes').textContent = remaining > 0 ? remaining.toLocaleString() : '0';
+            } else {
+                document.getElementById('remainingLikes').textContent = state.nextTarget ? '-' : 'Tamamlandı';
+            }
+        });
+
+        socket.on('rewards-update', (newRewards) => {
+            rewards = newRewards;
+            updateRewardsTable();
+            updateWinnersTable();
+        });
+
+        socket.on('auto-rewards-update', (autoRewardsData) => {
+            autoRewards = autoRewardsData;
+            updateAutoRewardsTable(autoRewards);
+            updateWinnersTable(); // Kazananlar listesini de güncelle
+        });
+
+        socket.on('likes-update', (likes) => {
+            document.getElementById('currentLikes').textContent = likes.toLocaleString();
+
+            // Update remaining likes
+            const nextTarget = parseInt(document.getElementById('nextTarget').textContent.replace(/,/g, '').replace('Tamamlandı', '0')) || 0;
+            if (nextTarget > 0) {
+                const remaining = nextTarget - likes;
+                document.getElementById('remainingLikes').textContent = remaining > 0 ? remaining.toLocaleString() : '0';
+            }
+        });
+
+        socket.on('start-likes', (startLikes) => {
+            document.getElementById('startLikes').textContent = startLikes.toLocaleString();
+        });
+
+        socket.on('reward-system-status', (status) => {
+            rewardSystemActive = status;
+            if (status) {
+                document.getElementById('rewardSystemToggle').textContent = '⏹ Ödül Sistemini Durdur';
+                document.getElementById('rewardSystemToggle').className = 'btn-danger';
+                document.getElementById('rewardSystemStatus').className = 'badge badge-success';
+                document.getElementById('rewardSystemStatus').textContent = 'Açık';
+                // Disable inputs ve mod butonları
+                document.querySelectorAll('#targetsMode input, #autoMode input').forEach(input => {
+                    input.disabled = true;
+                });
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+                document.querySelectorAll('#targetsMode button').forEach(btn => {
+                    if (!btn.id.includes('rewardSystem')) btn.disabled = true;
+                });
+                addLog('🎯 Ödül sistemi başlatıldı!', 'success');
+            } else {
+                document.getElementById('rewardSystemToggle').textContent = '🎯 Ödül Sistemini Başlat';
+                document.getElementById('rewardSystemToggle').className = 'btn-success';
+                document.getElementById('rewardSystemStatus').className = 'badge badge-warning';
+                document.getElementById('rewardSystemStatus').textContent = 'Kapalı';
+
+                // Dashboard'daki ödül durumunu güncelle
+                const dashboardStatus = document.getElementById('dashboardRewardStatus');
+                if (dashboardStatus) {
+                    dashboardStatus.innerHTML = '<span style="color: #ff5252;">● Kapalı</span>';
+                }
+                const dashboardMode = document.getElementById('rewardModeDisplay');
+                if (dashboardMode) {
+                    dashboardMode.textContent = rewardMode === 'auto' ? 'Otomatik' : 'Hedefler';
+                }
+                // Enable inputs ve mod butonları
+                document.querySelectorAll('#targetsMode input, #autoMode input').forEach(input => {
+                    input.disabled = false;
+                });
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                });
+                document.querySelectorAll('#targetsMode button').forEach(btn => {
+                    btn.disabled = false;
+                });
+                addLog('⏹ Ödül sistemi durduruldu', 'warning');
+            }
+        });
+
+        socket.on('progress-update', (data) => {
+            document.getElementById('progress').textContent = Math.round(data.percentage) + '%';
+            document.getElementById('nextTarget').textContent = data.nextTarget ? data.nextTarget.toLocaleString() : 'Tamamlandı';
+
+            // Update remaining likes
+            if (data.nextTarget && data.currentLikes !== undefined) {
+                const remaining = data.nextTarget - data.currentLikes;
+                document.getElementById('remainingLikes').textContent = remaining > 0 ? remaining.toLocaleString() : '0';
+            } else {
+                document.getElementById('remainingLikes').textContent = data.nextTarget ? '-' : 'Tamamlandı';
+            }
+        });
+
+        socket.on('reward-mode-changed', (mode) => {
+            document.getElementById('rewardModeDisplay').textContent = mode === 'auto' ? 'Otomatik' : 'Hedefler';
+        });
+
+        socket.on('participants-update', (newParticipants) => {
+            const newCount = newParticipants.length;
+            const oldCount = participants ? participants.length : 0;
+
+            if (newCount > oldCount) {
+                const newUsers = newParticipants.slice(oldCount);
+                newUsers.forEach(user => {
+                    addLog(`Yeni katılımcı: ${user}`, 'success');
+                });
+            }
+
+            participants = newParticipants;
+            updateParticipantsList();
+        });
+
+        socket.on('progress-update', (data) => {
+            document.getElementById('progress').textContent = Math.round(data.percentage) + '%';
+            document.getElementById('nextTarget').textContent = data.nextTarget || 'Tamamlandı';
+        });
+
+        socket.on('reward-achieved', (reward) => {
+            rewards = rewards.map(r => r.target === reward.target ? reward : r);
+            updateRewardsTable();
+            updateWinnersTable();
+            addLog(`🎉 ÖDÜL KAZANILDI! ${reward.target} beğeni - ${reward.prize} - Kazanan: ${reward.winner}`, 'success');
+        });
+
+        // Monitoring events for refresh
+        socket.on('monitoring-started', (data) => {
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'inline-block';
+            document.getElementById('monitoringStatus').textContent = 'Aktif';
+            document.getElementById('monitoringStatus').className = 'badge badge-success';
+
+            if (data.videoId) {
+                document.getElementById('videoId').value = data.videoId;
+            }
+            if (data.startLikes !== undefined) {
+                document.getElementById('startLikes').textContent = data.startLikes.toLocaleString();
+            }
+
+            // Dashboard update
+            const dashboardMonitoring = document.getElementById('dashboardMonitoringStatus');
+            if (dashboardMonitoring) {
+                dashboardMonitoring.innerHTML = '<span style="color: #4caf50;">● Yayında</span>';
+            }
+        });
+
+        socket.on('monitoring-stopped', () => {
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('monitoringStatus').textContent = 'Pasif';
+            document.getElementById('monitoringStatus').className = 'badge badge-warning';
+
+            // Dashboard update
+            const dashboardMonitoring = document.getElementById('dashboardMonitoringStatus');
+            if (dashboardMonitoring) {
+                dashboardMonitoring.innerHTML = '<span style="color: #ff5252;">● Durduruldu</span>';
+            }
+        });
+
+        // Initial - Sayfa yüklendiğinde server'dan state bilgisini al
+        setTimeout(() => {
+            console.log('Requesting initial state from server...');
+            socket.emit('get-progress');
+        }, 100);
+    </script>
+</body>
+</html>
