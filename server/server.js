@@ -153,8 +153,11 @@ function startMonitoring() {
 
   // Start Python chat fetcher for live streams
   if (state.videoId && !chatProcess) {
-    console.log('Starting Python chat fetcher...');
-    chatProcess = spawn('python3', [
+    // Windows uses 'python', macOS/Linux use 'python3'
+    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    console.log(`Starting Python chat fetcher with command: ${pythonCommand}`);
+
+    chatProcess = spawn(pythonCommand, [
       './python/chat_fetcher.py',
       state.videoId,
       'http://localhost:3001'
@@ -165,11 +168,38 @@ function startMonitoring() {
     });
 
     chatProcess.stderr.on('data', (data) => {
-      console.error(`Chat fetcher error: ${data}`);
+      const errorMsg = data.toString();
+      console.error(`Chat fetcher error: ${errorMsg}`);
+
+      // Check for common Windows Python errors
+      if (errorMsg.includes('ModuleNotFoundError') || errorMsg.includes('No module named')) {
+        console.error('\n⚠️  PYTHON PACKAGE MISSING!');
+        console.error('Please run WINDOWS-SETUP.bat to install Python dependencies');
+        console.error('Or manually run: pip install pytchat requests\n');
+      }
+      if (errorMsg.includes('python') && errorMsg.includes('not found')) {
+        console.error('\n⚠️  PYTHON NOT FOUND!');
+        console.error('Please install Python from: https://www.python.org/downloads/');
+        console.error('IMPORTANT: Check "Add Python to PATH" during installation\n');
+      }
+    });
+
+    chatProcess.on('error', (error) => {
+      console.error('Failed to start Python chat fetcher:', error.message);
+      if (error.code === 'ENOENT') {
+        console.error('\n⚠️  Python command not found!');
+        if (process.platform === 'win32') {
+          console.error('On Windows, make sure Python is installed and added to PATH');
+          console.error('Run WINDOWS-SETUP.bat to check Python installation');
+        }
+      }
     });
 
     chatProcess.on('close', (code) => {
       console.log(`Chat fetcher exited with code ${code}`);
+      if (code !== 0) {
+        console.error('Chat fetcher failed. Check Python installation and dependencies.');
+      }
       chatProcess = null;
     });
   }
@@ -504,6 +534,12 @@ io.on('connection', (socket) => {
     startMonitoring();
     io.emit('monitoring-status', true);
     io.emit('start-likes', state.startLikes);
+
+    // Emit monitoring-started event for button state update
+    io.emit('monitoring-started', {
+      videoId: state.videoId,
+      startLikes: state.startLikes
+    });
   });
 
   socket.on('stop-monitoring', () => {
@@ -511,6 +547,9 @@ io.on('connection', (socket) => {
     state.stats.streamStartTime = null;
     stopMonitoring();
     io.emit('monitoring-status', false);
+
+    // Emit monitoring-stopped event for button state update
+    io.emit('monitoring-stopped');
   });
 
   socket.on('get-progress', () => {

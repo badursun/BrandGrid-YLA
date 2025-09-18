@@ -218,17 +218,11 @@
 
         h1 {
             font-size: 4em;
-            background: linear-gradient(45deg, #ff006e, #8338ec, #3a86ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #ffffff;
             margin-bottom: 50px;
-            animation: glow 2s ease-in-out infinite alternate;
-        }
-
-        @keyframes glow {
-            from { filter: drop-shadow(0 0 20px rgba(255, 0, 110, 0.5)); }
-            to { filter: drop-shadow(0 0 30px rgba(131, 56, 236, 0.8)); }
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
 
         /* Flip Counter */
@@ -241,8 +235,8 @@
 
         .flip-digit-wrapper {
             position: relative;
-            width: 80px;
-            height: 120px;
+            width: 110px;
+            height: 160px;
         }
 
         .flip-digit {
@@ -255,10 +249,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 4em;
+            font-size: 5.5em;
             font-weight: bold;
             color: #fff;
             overflow: hidden;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
         }
 
         .flip-digit::before {
@@ -272,20 +268,29 @@
         }
 
         .flip-digit.flip-animation {
-            animation: flip 0.6s ease-in-out;
+            animation: flipDigit 0.6s ease-in-out;
         }
 
-        @keyframes flip {
-            0% { transform: rotateX(0deg); }
-            50% { transform: rotateX(90deg); }
-            100% { transform: rotateX(0deg); }
+        @keyframes flipDigit {
+            0% {
+                transform: rotateX(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: rotateX(90deg);
+                opacity: 0.8;
+            }
+            100% {
+                transform: rotateX(0deg);
+                opacity: 1;
+            }
         }
 
         .separator {
             color: #fff;
-            font-size: 4em;
+            font-size: 5.5em;
             font-weight: bold;
-            padding: 0 10px;
+            padding: 0 4px;
             text-shadow: 0 0 20px rgba(255,255,255,0.5);
         }
 
@@ -333,7 +338,7 @@
         }
 
         .stat-label {
-            color: #8b92b9;
+            color: #ffffff;
             font-size: 0.8em;
         }
 
@@ -984,7 +989,7 @@
                 <div class="stat-divider"></div>
                 <div class="stat-item">
                     <span class="stat-label">KATILIMCI</span>
-                    <span class="stat-value" id="participants" style="color: #3a86ff;">0</span>
+                    <span class="stat-value" id="participants">0</span>
                 </div>
             </div>
 
@@ -1087,41 +1092,62 @@
         function createFlipCounter() {
             const counter = document.getElementById('flipCounter');
             counter.innerHTML = '';
-            const likeStr = currentLikes.toString().padStart(7, '0'); // Always 7 digits
 
-            for (let i = 0; i < likeStr.length; i++) {
-                // Add separator after 1st and 4th digit (for millions format)
-                if (i === 1 || i === 4) {
+            // Format number with thousand separators
+            const likeStr = currentLikes.toString();
+
+            // Create formatted string with separators
+            let formattedStr = '';
+            for (let i = likeStr.length - 1; i >= 0; i--) {
+                const position = likeStr.length - 1 - i;
+                // Add separator every 3 digits from the right (but not at the beginning)
+                if (position > 0 && position % 3 === 0) {
+                    formattedStr = '.' + formattedStr;
+                }
+                formattedStr = likeStr[i] + formattedStr;
+            }
+
+            // Create digit elements
+            let digitIndex = 0;
+            for (let i = 0; i < formattedStr.length; i++) {
+                if (formattedStr[i] === '.') {
+                    // Add separator
                     const separator = document.createElement('div');
                     separator.className = 'separator';
                     separator.textContent = '.';
                     counter.appendChild(separator);
+                } else {
+                    // Add digit
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'flip-digit-wrapper';
+                    const digit = document.createElement('div');
+                    digit.className = 'flip-digit';
+                    digit.textContent = formattedStr[i];
+                    digit.id = `digit-${digitIndex}`;
+                    wrapper.appendChild(digit);
+                    counter.appendChild(wrapper);
+                    digitIndex++;
                 }
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'flip-digit-wrapper';
-                const digit = document.createElement('div');
-                digit.className = 'flip-digit';
-                digit.textContent = likeStr[i];
-                digit.id = `digit-${i}`;
-                wrapper.appendChild(digit);
-                counter.appendChild(wrapper);
             }
         }
 
         function updateFlipCounter(newLikes) {
-            // If counter structure changed, recreate it
-            if (!document.getElementById('digit-0')) {
+            const oldDigitCount = currentLikes.toString().length;
+            const newDigitCount = newLikes.toString().length;
+
+            // Recreate counter if digit count changed
+            if (oldDigitCount !== newDigitCount || !document.getElementById('digit-0')) {
                 currentLikes = newLikes;
                 createFlipCounter();
                 return;
             }
 
-            const oldStr = currentLikes.toString().padStart(7, '0');
-            const newStr = newLikes.toString().padStart(7, '0');
+            const oldStr = currentLikes.toString();
+            const newStr = newLikes.toString();
 
             currentLikes = newLikes;
 
+            // Update only changed digits (no animation for separators)
             for (let i = 0; i < newStr.length; i++) {
                 if (oldStr[i] !== newStr[i]) {
                     const digit = document.getElementById(`digit-${i}`);

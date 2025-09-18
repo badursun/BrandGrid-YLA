@@ -1552,8 +1552,10 @@
 
         // Monitoring events for refresh
         socket.on('monitoring-started', (data) => {
-            document.getElementById('startBtn').style.display = 'none';
-            document.getElementById('stopBtn').style.display = 'inline-block';
+            // Use disabled property instead of display style for consistent behavior
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('videoId').disabled = true;
             document.getElementById('monitoringStatus').textContent = 'Aktif';
             document.getElementById('monitoringStatus').className = 'badge badge-success';
 
@@ -1572,8 +1574,10 @@
         });
 
         socket.on('monitoring-stopped', () => {
-            document.getElementById('startBtn').style.display = 'inline-block';
-            document.getElementById('stopBtn').style.display = 'none';
+            // Use disabled property instead of display style for consistent behavior
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('videoId').disabled = false;
             document.getElementById('monitoringStatus').textContent = 'Pasif';
             document.getElementById('monitoringStatus').className = 'badge badge-warning';
 
