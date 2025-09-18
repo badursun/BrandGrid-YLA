@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial;
+            background: #f0f0f0;
+            text-align: center;
+        }
+        .canvas-container {
+            display: inline-block;
+            margin: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            margin: 20px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>YouTube Live Awards - Icon Generator</h1>
+    <p>This will generate icon files for the application</p>
+
+    <div class="controls">
+        <button onclick="downloadPNG(512)">Download PNG (512x512)</button>
+        <button onclick="downloadPNG(256)">Download PNG (256x256)</button>
+        <button onclick="downloadPNG(128)">Download PNG (128x128)</button>
+        <button onclick="downloadPNG(64)">Download PNG (64x64)</button>
+        <button onclick="downloadPNG(32)">Download PNG (32x32)</button>
+        <button onclick="downloadPNG(16)">Download PNG (16x16)</button>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function drawIcon(size) {
+            canvas.width = size;
+            canvas.height = size;
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#FF0000');
+            gradient.addColorStop(1, '#CC0000');
+
+            // Rounded rectangle background
+            const radius = size * 0.15;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(size - radius, 0);
+            ctx.quadraticCurveTo(size, 0, size, radius);
+            ctx.lineTo(size, size - radius);
+            ctx.quadraticCurveTo(size, size, size - radius, size);
+            ctx.lineTo(radius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // YouTube Play button triangle
+            ctx.beginPath();
+            ctx.moveTo(size * 0.38, size * 0.3);
+            ctx.lineTo(size * 0.38, size * 0.7);
+            ctx.lineTo(size * 0.68, size * 0.5);
+            ctx.closePath();
+            ctx.fillStyle = 'white';
+            ctx.fill();
+
+            // Trophy icon (simplified)
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = size * 0.03;
+            ctx.beginPath();
+            // Trophy cup
+            ctx.arc(size * 0.5, size * 0.75, size * 0.12, Math.PI, 0, false);
+            ctx.stroke();
+
+            // Trophy handles
+            ctx.beginPath();
+            ctx.arc(size * 0.38, size * 0.75, size * 0.04, Math.PI * 0.5, Math.PI * 1.5, false);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(size * 0.62, size * 0.75, size * 0.04, Math.PI * 1.5, Math.PI * 0.5, false);
+            ctx.stroke();
+
+            // Trophy star
+            ctx.fillStyle = '#FFD700';
+            ctx.font = `bold ${size * 0.08}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('★', size * 0.5, size * 0.78);
+        }
+
+        function downloadPNG(size) {
+            drawIcon(size);
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `icon-${size}x${size}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Draw default icon
+        drawIcon(256);
+
+        // Instructions
+        const instructions = document.createElement('div');
+        instructions.innerHTML = `
+            <h3>Next Steps:</h3>
+            <ol style="text-align: left; max-width: 600px; margin: 20px auto;">
+                <li>Download all PNG sizes using the buttons above</li>
+                <li>For Windows (.ico):
+                    <ul>
+                        <li>Use an online converter like <a href="https://convertio.co/png-ico/" target="_blank">convertio.co</a></li>
+                        <li>Or use ImageMagick: <code>convert icon-256x256.png icon.ico</code></li>
+                    </ul>
+                </li>
+                <li>For macOS (.icns):
+                    <ul>
+                        <li>Use iconutil on Mac: <code>iconutil -c icns icon.iconset</code></li>
+                        <li>Or use an online converter</li>
+                    </ul>
+                </li>
+                <li>Save the final files as:
+                    <ul>
+                        <li><strong>icon.ico</strong> for Windows</li>
+                        <li><strong>icon.icns</strong> for macOS</li>
+                        <li><strong>icon.png</strong> (512x512) for Linux</li>
+                    </ul>
+                </li>
+            </ol>
+        `;
+        document.body.appendChild(instructions);
+    </script>
+</body>
+</html>

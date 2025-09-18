@@ -10,11 +10,100 @@
     "electron": "electron .",
     "setup": "node setup.js",
     "build": "electron-builder",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-all": "electron-builder --win --mac",
+    "dist": "npm run build-all",
     "install-deps": "npm install"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["youtube", "live", "awards", "streaming"],
+  "author": "BrandGrid Apps",
+  "license": "MIT",
+  "build": {
+    "appId": "com.brandgrid.youtube-live-awards",
+    "productName": "YouTube Live Awards",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build-resources"
+    },
+    "files": [
+      "electron/**/*",
+      "server/**/*",
+      "python/**/*",
+      "views/**/*",
+      "assets/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "python",
+        "to": "python",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ],
+      "icon": "build-resources/icon.ico",
+      "artifactName": "YouTube-Live-Awards-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build-resources/icon.ico",
+      "uninstallerIcon": "build-resources/icon.ico",
+      "installerHeaderIcon": "build-resources/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "YouTube Live Awards"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "build-resources/icon.icns",
+      "artifactName": "YouTube-Live-Awards-${version}-${arch}.${ext}",
+      "category": "public.app-category.entertainment"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "title": "YouTube Live Awards ${version}",
+      "icon": "build-resources/icon.icns",
+      "backgroundColor": "#1a1a2e",
+      "window": {
+        "width": 540,
+        "height": 400
+      }
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build-resources",
+      "category": "Utility"
+    }
+  },
   "devDependencies": {
     "electron": "^27.0.0",
     "electron-builder": "^24.6.4"
