@@ -44,13 +44,36 @@ app.post('/api/chat-participants', (req, res) => {
   const { videoId, participants } = req.body;
 
   if (videoId === state.videoId && participants) {
-    // Update participants
-    state.chatParticipants = new Set(participants);
+    // Update participants with ID support
+    participants.forEach(participant => {
+      if (typeof participant === 'string') {
+        // Eski format - sadece isim (geriye uyumluluk için)
+        console.log(`WARNING: Old format participant (string only): ${participant}`);
+        state.chatParticipants.set(participant, { name: participant, id: participant });
+      } else if (participant.id) {
+        // Yeni format - ID ile birlikte
+        console.log(`Adding participant: ${participant.name} with ID: ${participant.id}`);
 
-    // Emit update to all clients
-    io.emit('participants-update', participants);
+        // ID ve isim aynı mı kontrol et
+        if (participant.id === participant.name) {
+          console.error(`ERROR: Participant ID is same as name for ${participant.name}!`);
+        }
 
-    res.json({ success: true, count: participants.length });
+        state.chatParticipants.set(participant.id, {
+          name: participant.name,
+          id: participant.id,
+          url: participant.url || ''
+        });
+      } else {
+        console.error(`ERROR: Participant has no ID:`, participant);
+      }
+    });
+
+    // Send participants as array with ID info
+    const participantsList = Array.from(state.chatParticipants.values());
+    io.emit('participants-update', participantsList);
+
+    res.json({ success: true, count: state.chatParticipants.size });
   } else {
     res.status(400).json({ success: false, error: 'Invalid data' });
   }
@@ -63,8 +86,8 @@ let state = {
   startLikes: 0,
   currentLikes: 0,
   rewards: [],
-  chatParticipants: new Set(),
-  winners: new Set(),
+  chatParticipants: new Map(), // Map: channel_id -> {name, id, url}
+  winners: new Map(), // Map: channel_id -> winner info
   rewardSystemActive: false, // Ödül sistemi aktif mi?
   rewardMode: 'auto', // 'targets' or 'auto' - default auto
   autoMode: {
@@ -242,18 +265,23 @@ function achieveReward(reward) {
   reward.achieved = true;
   reward.achievedAt = new Date();
 
-  // Kazanan seç
-  const eligibleParticipants = Array.from(state.chatParticipants)
-    .filter(p => !state.winners.has(p));
+  // Kazanan seç - ID tabanlı
+  const eligibleParticipants = Array.from(state.chatParticipants.values())
+    .filter(p => !state.winners.has(p.id));
 
   if (eligibleParticipants.length > 0) {
-    const winner = eligibleParticipants[Math.floor(Math.random() * eligibleParticipants.length)];
-    reward.winner = winner;
-    state.winners.add(winner);
+    const winnerData = eligibleParticipants[Math.floor(Math.random() * eligibleParticipants.length)];
+    console.log('Selected winner:', JSON.stringify(winnerData, null, 2));
+    console.log('Winner ID:', winnerData.id);
+    console.log('Winner Name:', winnerData.name);
+    reward.winner = winnerData.name;
+    reward.winnerId = winnerData.id;
+    state.winners.set(winnerData.id, winnerData);
 
     // Kazananlar listesine ekle
     state.winnersList.push({
-      name: winner,
+      name: winnerData.name,
+      id: winnerData.id,
       prize: reward.prize,
       time: new Date()
     });
@@ -354,8 +382,8 @@ io.on('connection', (socket) => {
   // Send initial state - TÜM state bilgilerini gönder
   socket.emit('state-update', {
     ...state,
-    chatParticipants: Array.from(state.chatParticipants),
-    winners: Array.from(state.winners),
+    chatParticipants: Array.from(state.chatParticipants.values()),
+    winners: Array.from(state.winners.values()),
     progress: getProgressPercentage(),
     nextTarget: getNextTarget(),
     startLikes: state.startLikes,
@@ -376,8 +404,8 @@ io.on('connection', (socket) => {
     // Tüm state'i geri gönder
     const stateToSend = {
       ...state,
-      chatParticipants: Array.from(state.chatParticipants),
-      winners: Array.from(state.winners),
+      chatParticipants: Array.from(state.chatParticipants.values()),
+      winners: Array.from(state.winners.values()),
       progress: getProgressPercentage(),
       nextTarget: getNextTarget(),
       startLikes: state.startLikes,
@@ -402,7 +430,7 @@ io.on('connection', (socket) => {
     }
 
     // Participants update
-    socket.emit('participants-update', Array.from(state.chatParticipants));
+    socket.emit('participants-update', Array.from(state.chatParticipants.values()));
 
     // Likes update
     socket.emit('likes-update', state.currentLikes);

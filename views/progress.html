@@ -692,6 +692,66 @@
             -webkit-app-region: no-drag;
         }
 
+        /* Live broadcast indicator */
+        .live-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 100;
+            -webkit-app-region: no-drag;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff0000;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px rgba(255,0,0,0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        .live-text {
+            color: #ff0000;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stream-duration {
+            color: rgba(255,255,255,0.9);
+            font-size: 16px;
+            font-weight: 500;
+            font-family: 'SF Mono', Monaco, monospace;
+            padding-left: 12px;
+            border-left: 1px solid rgba(255,255,255,0.2);
+        }
+
         .control-btn {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
@@ -898,6 +958,13 @@
     <div class="control-buttons">
         <button class="control-btn" onclick="toggleFullscreen()">⛶ Tam Ekran</button>
     </div>
+    <div class="live-indicator">
+        <div class="live-badge">
+            <div class="live-dot"></div>
+            <span class="live-text">CANLI</span>
+        </div>
+        <div class="stream-duration" id="streamDuration">00:00:00</div>
+    </div>
 
     <div class="container">
         <h1 id="mainTitle">CANLI YAYIN BAŞLADI</h1>
@@ -955,6 +1022,52 @@
         let targetLikes = 0;
         let rewardSystemActive = false;
         let winnersList = [];
+        let streamStartTime = null;
+        let streamDurationInterval = null;
+
+        // Format duration as HH:MM:SS
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Start stream duration timer
+        function startStreamTimer() {
+            if (!streamStartTime) {
+                streamStartTime = Date.now();
+            }
+
+            // Clear any existing interval
+            if (streamDurationInterval) {
+                clearInterval(streamDurationInterval);
+            }
+
+            // Update immediately
+            updateStreamDuration();
+
+            // Update every second
+            streamDurationInterval = setInterval(updateStreamDuration, 1000);
+        }
+
+        // Update stream duration display
+        function updateStreamDuration() {
+            if (!streamStartTime) return;
+
+            const elapsedSeconds = Math.floor((Date.now() - streamStartTime) / 1000);
+            document.getElementById('streamDuration').textContent = formatDuration(elapsedSeconds);
+        }
+
+        // Stop stream timer
+        function stopStreamTimer() {
+            if (streamDurationInterval) {
+                clearInterval(streamDurationInterval);
+                streamDurationInterval = null;
+            }
+            streamStartTime = null;
+            document.getElementById('streamDuration').textContent = '00:00:00';
+        }
 
         // Create background particles
         function createParticles() {
@@ -1418,6 +1531,19 @@
         // Socket events
         socket.on('state-update', (state) => {
             rewardSystemActive = state.rewardSystemActive;
+
+            // Start or stop stream timer based on monitoring state and streamStartTime
+            if (state.monitoring && state.stats && state.stats.streamStartTime) {
+                // If monitoring is active and we have a start time
+                if (!streamDurationInterval) {
+                    // Use the server's streamStartTime
+                    streamStartTime = state.stats.streamStartTime;
+                    startStreamTimer();
+                }
+            } else {
+                // Stop timer if monitoring stopped or no start time
+                stopStreamTimer();
+            }
 
             // Update title
             if (state.progressTitle) {

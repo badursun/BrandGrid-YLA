@@ -116,8 +116,51 @@
 
         .content {
             padding: 20px;
-            height: calc(100vh - 120px);
+            height: calc(100vh - 150px); /* Footer için alan bırak */
             overflow-y: auto;
+        }
+
+        /* Sticky Footer */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(90deg, #0f0f0f 0%, #1a1a1a 100%);
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        .footer-brand {
+            font-size: 11px;
+            color: #888;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-link {
+            font-size: 11px;
+            color: #667eea;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .footer-link:hover {
+            color: #8b5cf6;
+            text-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+        }
+
+        .footer-link::before {
+            content: '📱';
+            font-size: 12px;
         }
 
         .tab-content {
@@ -279,6 +322,12 @@
 
         .achieved {
             background: rgba(16, 185, 129, 0.1);
+        }
+
+        /* Channel ID link styling */
+        #autoRewardsTable a:hover {
+            color: #2980b9 !important;
+            text-decoration: underline !important;
         }
 
         .badge {
@@ -689,6 +738,7 @@
                                 <th>Ödül</th>
                                 <th width="100">Durum</th>
                                 <th>Kazanan</th>
+                                <th>Kullanıcı ID</th>
                                 <th width="60">İşlem</th>
                             </tr>
                         </thead>
@@ -725,6 +775,7 @@
                                     <th>Ödül</th>
                                     <th width="100">Durum</th>
                                     <th>Kazanan</th>
+                                    <th>Kullanıcı ID</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -771,6 +822,14 @@
                 <div id="log"></div>
             </div>
         </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-brand">BrandGrid Apps</div>
+        <a href="https://t.me/brandgridapps" target="_blank" class="footer-link">
+            https://t.me/brandgridapps
+        </a>
     </div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
@@ -942,7 +1001,17 @@
                 // Kazanan sütunu ekle
                 row.insertCell(3).textContent = reward.winner || '-';
 
-                const actionCell = row.insertCell(4);
+                // Kullanıcı ID'sini göster (kısaltılmış hali)
+                const idCell = row.insertCell(4);
+                if (reward.winnerId) {
+                    // ID'nin ilk 8 karakterini göster
+                    const shortId = reward.winnerId.substring(0, 8) + '...';
+                    idCell.innerHTML = `<span style="font-size: 10px; color: #666;" title="${reward.winnerId}">${shortId}</span>`;
+                } else {
+                    idCell.textContent = '-';
+                }
+
+                const actionCell = row.insertCell(5);
                 if (!reward.achieved) {
                     const btn = document.createElement('button');
                     btn.textContent = 'Sil';
@@ -971,6 +1040,28 @@
                     '<span class="badge badge-warning">Bekliyor</span>';
 
                 row.insertCell(4).textContent = reward.winner || '-';
+
+                // Kullanıcı ID'sini göster - tıklanabilir link olarak
+                const idCell = row.insertCell(5);
+
+                if (reward.winnerId) {
+                    // YouTube channel URL oluştur
+                    const channelUrl = `https://www.youtube.com/channel/${reward.winnerId}`;
+
+                    // Tam ID'yi tıklanabilir link olarak göster
+                    idCell.innerHTML = `<a href="${channelUrl}"
+                                           target="_blank"
+                                           style="font-size: 11px;
+                                                  color: #3498db;
+                                                  text-decoration: none;
+                                                  font-family: monospace;
+                                                  word-break: break-all;"
+                                           title="YouTube Channel'a git">
+                                           ${reward.winnerId}
+                                        </a>`;
+                } else {
+                    idCell.textContent = '-';
+                }
             });
         }
 
@@ -1056,12 +1147,23 @@
                 const item = document.createElement('div');
                 item.className = 'participant-item';
 
-                const isWinner = rewards.some(r => r.winner === participant);
+                // participant obje veya string olabilir
+                const participantName = typeof participant === 'string' ? participant : (participant.name || 'Bilinmeyen');
+                const participantId = typeof participant === 'object' ? participant.id : null;
+
+                // Kazanan kontrolü - hem isim hem ID ile kontrol et
+                const isWinner = rewards.some(r =>
+                    r.winner === participantName || r.winnerId === participantId
+                ) || (autoRewards && autoRewards.some(r =>
+                    r.winner === participantName || r.winnerId === participantId
+                ));
+
+                const firstLetter = participantName.charAt(0).toUpperCase() || '?';
 
                 item.innerHTML = `
                     <div class="participant-name">
-                        <div class="participant-avatar">${participant.charAt(0).toUpperCase()}</div>
-                        <span>${participant}</span>
+                        <div class="participant-avatar">${firstLetter}</div>
+                        <span>${participantName}</span>
                         ${isWinner ? '<span class="badge badge-success participant-badge">Kazanan</span>' : ''}
                     </div>
                 `;
@@ -1426,7 +1528,9 @@
             if (newCount > oldCount) {
                 const newUsers = newParticipants.slice(oldCount);
                 newUsers.forEach(user => {
-                    addLog(`Yeni katılımcı: ${user}`, 'success');
+                    // user obje olabilir, name property'sini kontrol et
+                    const userName = typeof user === 'string' ? user : (user.name || 'Bilinmeyen');
+                    addLog(`Yeni katılımcı: ${userName}`, 'success');
                 });
             }
 
