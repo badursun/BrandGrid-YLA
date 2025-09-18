@@ -4,9 +4,11 @@
   "description": "BrandGrid - YouTube Live Awards",
   "main": "electron/main.js",
   "scripts": {
-    "start": "concurrently \"npm run server\" \"npm run electron\"",
+    "start": "node server/server.js",
+    "start-electron": "concurrently \"npm run server\" \"npm run electron\"",
     "server": "node server/server.js",
     "electron": "electron .",
+    "setup": "node setup.js",
     "build": "electron-builder",
     "install-deps": "npm install"
   },

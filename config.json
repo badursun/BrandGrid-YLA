@@ -1,0 +1,6 @@
+{
+  "port": 3001,
+  "pythonCommand": "python3",
+  "defaultPrize": "100 TL",
+  "defaultInterval": 100
+}
