@@ -188,11 +188,11 @@ async function setupProject() {
 
         if (isWindows) {
             console.log('  Double-click: START.bat');
-            console.log('  Or run: npm run start-electron');
+            console.log('  Or run: npm start');
         } else {
             console.log('  Double-click: START.command (macOS)');
             console.log('  Or run: ./START.sh');
-            console.log('  Or run: npm run start-electron');
+            console.log('  Or run: npm start');
         }
 
         console.log('\nThe Electron app will open automatically with:');

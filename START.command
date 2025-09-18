@@ -56,4 +56,4 @@ echo "------------------------------------------------"
 echo ""
 
 # Start with Electron (includes server)
-npm run start-electron
+npm start
