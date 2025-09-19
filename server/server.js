@@ -205,11 +205,19 @@ function startChatFetcher() {
 
   log('system', `Using chat fetcher: ${finalScriptPath}`);
 
+  // Set UTF-8 encoding for Windows
+  const env = { ...process.env };
+  env.PYTHONIOENCODING = 'utf-8';
+  env.PYTHONUTF8 = '1';
+
   chatProcess = spawn(pythonCommand, [
     finalScriptPath,
     state.videoId,
     'http://localhost:3001'
-  ]);
+  ], {
+    env: env,
+    encoding: 'utf8'
+  });
 
   chatProcess.stdout.on('data', (data) => {
     const message = data.toString().trim();

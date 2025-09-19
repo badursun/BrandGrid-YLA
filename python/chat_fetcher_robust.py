@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Robust YouTube Chat Fetcher with multiple fallback mechanisms
 Designed for production use during live streams
@@ -14,6 +15,13 @@ import json
 import os
 from datetime import datetime
 import traceback
+import io
+
+# Force UTF-8 encoding for Windows
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 class RobustChatFetcher:
     def __init__(self, video_id, server_url="http://localhost:3001"):
@@ -87,7 +95,7 @@ class RobustChatFetcher:
                 )
 
                 if self.chat and self.chat.is_alive():
-                    print(f"[{self.get_timestamp()}] ✓ Successfully connected to chat: {self.video_id}", flush=True)
+                    print(f"[{self.get_timestamp()}] [OK] Successfully connected to chat: {self.video_id}", flush=True)
                     self.last_message_time = time.time()
                     return True
 
@@ -186,9 +194,9 @@ class RobustChatFetcher:
                     if self.connect_to_chat():
                         self.reconnect_count += 1
                         self.stats['reconnects'] += 1
-                        print(f"[{self.get_timestamp()}] ✓ Reconnected successfully (#{self.reconnect_count})", flush=True)
+                        print(f"[{self.get_timestamp()}] [OK] Reconnected successfully (#{self.reconnect_count})", flush=True)
                     else:
-                        print(f"[{self.get_timestamp()}] ✗ Reconnection failed, will retry...", flush=True)
+                        print(f"[{self.get_timestamp()}] [ERROR] Reconnection failed, will retry...", flush=True)
                         time.sleep(5)
 
                 time.sleep(5)  # Check every 5 seconds
@@ -203,7 +211,7 @@ class RobustChatFetcher:
 
         # Initial connection
         if not self.connect_to_chat():
-            print(f"[{self.get_timestamp()}] ✗ Failed to establish initial connection", flush=True)
+            print(f"[{self.get_timestamp()}] [ERROR] Failed to establish initial connection", flush=True)
             return
 
         # Start health monitor in background
@@ -262,7 +270,7 @@ class RobustChatFetcher:
                         self.reconnect_count += 1
                         self.stats['reconnects'] += 1
                     else:
-                        print(f"[{self.get_timestamp()}] ✗ Critical: Unable to reconnect", flush=True)
+                        print(f"[{self.get_timestamp()}] [CRITICAL] Unable to reconnect", flush=True)
                         time.sleep(10)
 
                 time.sleep(1)
