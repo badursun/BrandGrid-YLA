@@ -565,6 +565,34 @@
             font-size: 11px;
             color: #a5b4fc;
         }
+
+        /* Range slider styling for volume control */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-track {
+            background: #333;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #667eea;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-top: -4px;
+        }
+
+        input[type="range"]:hover::-webkit-slider-thumb {
+            background: #8b5cf6;
+        }
     </style>
 </head>
 <body>
@@ -621,6 +649,19 @@
                         <button id="startBtn" class="btn-success" onclick="startMonitoring()">▶ Yayını Başlat</button>
                         <button id="stopBtn" class="btn-danger" onclick="stopMonitoring()" disabled>⏹ Yayını Durdur</button>
                         <button class="btn-progress" onclick="openProgress()">🎯 Progress Ekranı</button>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-left: auto; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 6px;">
+                            <input type="checkbox" id="soundEnabled" checked style="width: auto; margin: 0;">
+                            <label for="soundEnabled" style="margin: 0; cursor: pointer; font-size: 12px; color: #ccc;">
+                                🔊 Ses Bildirimi
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 11px; color: #888;">🔈</span>
+                                <input type="range" id="soundVolume" min="0" max="100" value="70"
+                                       style="width: 80px; margin: 0; cursor: pointer;"
+                                       oninput="updateVolumeDisplay()">
+                                <span id="volumeDisplay" style="font-size: 11px; color: #ccc; min-width: 30px;">70%</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -837,6 +878,11 @@
         </a>
     </div>
 
+    <!-- Audio element for winner sound notification -->
+    <audio id="winnerSound" preload="auto">
+        <source src="../assets/sounds/winner.mp3" type="audio/mpeg">
+    </audio>
+
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
         const socket = io('http://localhost:3001');
@@ -851,6 +897,52 @@
         let streamInterval = null;
         let autoInterval = 100;
         let autoPrize = '100 TL';
+
+        // Update volume display
+        function updateVolumeDisplay() {
+            const volumeSlider = document.getElementById('soundVolume');
+            const volumeDisplay = document.getElementById('volumeDisplay');
+            volumeDisplay.textContent = volumeSlider.value + '%';
+        }
+
+        // Play winner sound notification
+        function playWinnerSound() {
+            // Check if sound is enabled
+            const soundCheckbox = document.getElementById('soundEnabled');
+            if (!soundCheckbox || !soundCheckbox.checked) {
+                console.log('Sound notifications disabled');
+                return;
+            }
+
+            // Get volume from slider
+            const volumeSlider = document.getElementById('soundVolume');
+            const volume = (volumeSlider ? parseInt(volumeSlider.value) : 70) / 100;
+
+            try {
+                // Create new Audio object each time for reliability
+                const winnerAudio = new Audio('../assets/sounds/winner.mp3');
+                winnerAudio.volume = volume;
+
+                // Play the sound
+                winnerAudio.play().then(() => {
+                    console.log(`Winner sound played successfully at volume ${Math.round(volume * 100)}%`);
+                }).catch(err => {
+                    console.log('Audio play failed, trying alternative method:', err);
+
+                    // Alternative method: use the audio element
+                    const audioElement = document.getElementById('winnerSound');
+                    if (audioElement) {
+                        audioElement.currentTime = 0;
+                        audioElement.volume = volume;
+                        audioElement.play().catch(e => {
+                            console.error('Alternative audio play also failed:', e);
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error('Winner sound error:', error);
+            }
+        }
 
         // Tab switching
         function switchTab(tabName) {
@@ -1699,6 +1791,9 @@
         socket.on('reward-achieved', (reward) => {
             console.log('reward-achieved received:', reward);
 
+            // Play winner sound notification
+            playWinnerSound();
+
             // Update rewards list
             rewards = rewards.map(r => r.targetLikes === reward.targetLikes ? reward : r);
 
@@ -1780,6 +1875,27 @@
                 dashboardMonitoring.innerHTML = '<span style="color: #ff5252;">● Durduruldu</span>';
             }
         });
+
+        // Enable audio on first user interaction (for Electron)
+        document.addEventListener('click', function enableAudio() {
+            try {
+                // Create and play a silent audio to enable audio context
+                const testAudio = new Audio('../assets/sounds/winner.mp3');
+                testAudio.volume = 0.01; // Very low volume
+                testAudio.play().then(() => {
+                    testAudio.pause();
+                    console.log('Audio context enabled');
+                }).catch(e => console.log('Audio context enable failed:', e));
+
+                // Also try with the audio element
+                const audioElement = document.getElementById('winnerSound');
+                if (audioElement) {
+                    audioElement.load(); // Preload the audio
+                }
+            } catch (e) {
+                console.log('Audio initialization error:', e);
+            }
+        }, { once: true });
 
         // Initial - Sayfa yüklendiğinde server'dan state bilgisini al
         setTimeout(() => {
