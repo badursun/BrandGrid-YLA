@@ -766,7 +766,12 @@
                     </div>
 
                     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #2a2a2a;">
-                        <h3 style="color: #ffd60a; margin-bottom: 15px;">🏆 Kazananlar Listesi</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="color: #ffd60a; margin: 0;">🏆 Kazananlar Listesi</h3>
+                            <button onclick="downloadWinnersList()" class="btn-sm btn-primary" style="padding: 5px 15px; font-size: 14px;">
+                                📥 TXT İndir
+                            </button>
+                        </div>
                         <table id="autoRewardsTable" style="display: table;">
                             <thead>
                                 <tr>
@@ -882,14 +887,20 @@
                 document.getElementById('autoMode').classList.add('active');
                 document.getElementById('rewardModeDisplay').textContent = 'Otomatik';
                 document.getElementById('autoRewardsTable').style.display = 'table';
-                // updateAutoInterval çağırmayı kaldırdık - sadece değerler değiştiğinde çağrılmalı
+                // Send auto config when switching to auto mode
+                autoInterval = parseInt(document.getElementById('autoInterval').value) || 100;
+                autoPrize = document.getElementById('autoPrize').value || '100 TL';
+                socket.emit('set-auto-config', {
+                    interval: autoInterval,
+                    prize: autoPrize
+                });
             }
         }
 
         // Auto mode toggle
         function updateAutoInterval() {
-            const autoInterval = parseInt(document.getElementById('autoInterval').value) || 100;
-            const autoPrize = document.getElementById('autoPrize').value || '100 TL';
+            autoInterval = parseInt(document.getElementById('autoInterval').value) || 100;
+            autoPrize = document.getElementById('autoPrize').value || '100 TL';
 
             socket.emit('set-auto-config', {
                 interval: autoInterval,
@@ -904,8 +915,8 @@
         }
 
         function updateAutoPrize() {
-            const autoInterval = parseInt(document.getElementById('autoInterval').value) || 100;
-            const autoPrize = document.getElementById('autoPrize').value || '100 TL';
+            autoInterval = parseInt(document.getElementById('autoInterval').value) || 100;
+            autoPrize = document.getElementById('autoPrize').value || '100 TL';
 
             socket.emit('set-auto-config', {
                 interval: autoInterval,
@@ -919,7 +930,24 @@
 
         // Toggle reward system
         function toggleRewardSystem() {
-            socket.emit('toggle-reward-system');
+            rewardSystemActive = !rewardSystemActive;
+            socket.emit('toggle-reward-system', rewardSystemActive);
+
+            // Update button text and status
+            const btn = document.getElementById('rewardSystemToggle');
+            const status = document.getElementById('rewardSystemStatus');
+
+            if (rewardSystemActive) {
+                btn.textContent = '⏸ Ödül Sistemini Durdur';
+                btn.className = 'btn-danger';
+                status.textContent = 'Açık';
+                status.className = 'badge badge-success';
+            } else {
+                btn.textContent = '🎯 Ödül Sistemini Başlat';
+                btn.className = 'btn-success';
+                status.textContent = 'Kapalı';
+                status.className = 'badge badge-warning';
+            }
         }
 
         // Clock
@@ -970,7 +998,7 @@
                 return;
             }
 
-            socket.emit('add-reward', { target, prize });
+            socket.emit('add-reward', { targetLikes: target, prize });
             document.getElementById('targetLikes').value = '';
             document.getElementById('prize').value = '';
             addLog(`Ödül eklendi: ${target} beğenide ${prize}`, 'success');
@@ -981,6 +1009,51 @@
             addLog('Ödül silindi', 'info');
         }
 
+        // Download winners list as TXT
+        function downloadWinnersList() {
+            if (!winners || winners.length === 0) {
+                alert('Henüz kazanan yok!');
+                return;
+            }
+
+            // Create formatted text content
+            let content = '===========================================\n';
+            content += '        YOUTUBE LIVE AWARDS - KAZANANLAR\n';
+            content += '===========================================\n\n';
+            content += `Tarih: ${new Date().toLocaleString('tr-TR')}\n`;
+            content += `Toplam Kazanan: ${winners.length}\n`;
+            content += '-------------------------------------------\n\n';
+
+            winners.forEach((winner, index) => {
+                content += `Kazanan #${index + 1}\n`;
+                content += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                content += `► İsim: ${winner.name || '-'}\n`;
+                content += `► Ödül: ${winner.prize || '-'}\n`;
+                content += `► Hedef Beğeni: ${winner.targetLikes || '-'}\n`;
+                content += `► Kazanma Zamanı: ${winner.timestamp ? new Date(winner.timestamp).toLocaleString('tr-TR') : '-'}\n`;
+                content += `► YouTube ID: ${winner.id || winner.winnerId || '-'}\n`;
+                if (winner.id || winner.winnerId) {
+                    content += `► YouTube Kanal: https://www.youtube.com/channel/${winner.id || winner.winnerId}\n`;
+                }
+                content += '\n';
+            });
+
+            content += '===========================================\n';
+            content += '        Generated by YouTube Live Awards\n';
+            content += '===========================================\n';
+
+            // Create blob and download
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            const date = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            link.download = `kazananlar_${date}.txt`;
+            link.href = window.URL.createObjectURL(blob);
+            link.click();
+            window.URL.revokeObjectURL(link.href);
+
+            addLog(`📥 Kazananlar listesi indirildi (${winners.length} kazanan)`, 'success');
+        }
+
         function updateRewardsTable() {
             const tbody = document.querySelector('#rewardsTable tbody');
             tbody.innerHTML = '';
@@ -988,7 +1061,7 @@
             rewards.forEach((reward, index) => {
                 const row = tbody.insertRow();
 
-                row.insertCell(0).innerHTML = `<strong>${reward.target}</strong>`;
+                row.insertCell(0).innerHTML = `<strong>${reward.targetLikes || reward.target}</strong>`;
                 row.insertCell(1).textContent = reward.prize;
 
                 const statusCell = row.insertCell(2);
@@ -1066,46 +1139,80 @@
         }
 
         function updateWinnersTable() {
-            const tbody = document.querySelector('#winnersTable tbody');
-            tbody.innerHTML = '';
+            console.log('updateWinnersTable called, winners:', winners);
 
-            // Hem normal rewards hem de autoRewards'dan achieved olanları al
-            let allAchievedRewards = [];
+            const tbody = document.querySelector('#autoRewardsTable tbody');
 
-            // Normal rewards'dan achieved olanları ekle
-            if (rewards && rewards.length > 0) {
-                allAchievedRewards = allAchievedRewards.concat(rewards.filter(r => r.achieved));
-            }
-
-            // Auto rewards'dan achieved olanları ekle
-            if (autoRewards && autoRewards.length > 0) {
-                allAchievedRewards = allAchievedRewards.concat(autoRewards.filter(r => r.achieved));
-            }
-
-            if (allAchievedRewards.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">Henüz kazanan yok</td></tr>';
-                document.getElementById('winnerCount').textContent = '0';
-                document.getElementById('totalWinnersCount').textContent = '0 Kazanan';
+            // Check if element exists
+            if (!tbody) {
+                console.error('Winners table tbody not found!');
                 return;
             }
 
-            allAchievedRewards.forEach(reward => {
+            tbody.innerHTML = '';
+
+            // Use winners list directly
+            if (!winners || winners.length === 0) {
+                console.log('No winners to display');
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">Henüz kazanan yok</td></tr>';
+
+                // Safe element updates
+                const winnerCount = document.getElementById('winnerCount');
+                if (winnerCount) winnerCount.textContent = '0';
+
+                const totalWinnersCount = document.getElementById('totalWinnersCount');
+                if (totalWinnersCount) totalWinnersCount.textContent = '0 Kazanan';
+
+                return;
+            }
+
+            console.log(`Displaying ${winners.length} winners`);
+
+            // Display winners from winnersList
+            winners.forEach((winner, index) => {
+                console.log(`Winner ${index}:`, winner);
                 const row = tbody.insertRow();
                 row.className = 'achieved';
 
-                row.insertCell(0).innerHTML = `<strong>${reward.winner}</strong>`;
-                row.insertCell(1).textContent = reward.prize;
-                row.insertCell(2).textContent = reward.target;
+                // Seviye
+                row.insertCell(0).textContent = `Seviye ${winner.order || (index + 1)}`;
 
-                const date = reward.achievedAt ? new Date(reward.achievedAt).toLocaleString('tr-TR') : '-';
-                row.insertCell(3).textContent = date;
+                // Beğeni
+                row.insertCell(1).innerHTML = `<strong>${winner.targetLikes || '-'}</strong>`;
+
+                // Ödül
+                row.insertCell(2).textContent = winner.prize || '-';
+
+                // Durum
+                const statusCell = row.insertCell(3);
+                statusCell.innerHTML = '<span class="badge badge-success">Kazanıldı</span>';
+
+                // Kazanan
+                row.insertCell(4).innerHTML = `<strong>${winner.name || winner.winner || '-'}</strong>`;
+
+                // Kullanıcı ID
+                const idCell = row.insertCell(5);
+                if (winner.id || winner.winnerId) {
+                    const channelId = winner.id || winner.winnerId;
+                    const channelUrl = `https://www.youtube.com/channel/${channelId}`;
+                    idCell.innerHTML = `<a href="${channelUrl}" target="_blank"
+                        style="font-size: 11px; color: #3498db; text-decoration: none;
+                        font-family: monospace; word-break: break-all;"
+                        title="YouTube Channel'a git">${channelId}</a>`;
+                } else {
+                    idCell.textContent = '-';
+                }
             });
 
-            document.getElementById('winnerCount').textContent = allAchievedRewards.length;
-            document.getElementById('totalWinnersCount').textContent = allAchievedRewards.length + ' Kazanan';
+            // Safe element updates
+            const winnerCount = document.getElementById('winnerCount');
+            if (winnerCount) winnerCount.textContent = winners.length;
+
+            const totalWinnersCount = document.getElementById('totalWinnersCount');
+            if (totalWinnersCount) totalWinnersCount.textContent = winners.length + ' Kazanan';
 
             // Update recent winners on dashboard
-            updateRecentWinners(allAchievedRewards.slice(-3).reverse());
+            updateRecentWinners(winners.slice(-3).reverse());
         }
 
         function updateRecentWinners(recentWinners) {
@@ -1200,7 +1307,8 @@
             const progressTitle = document.getElementById('progressTitle').value || 'CANLI YAYIN BAŞLADI';
             socket.emit('set-progress-title', progressTitle);
 
-            socket.emit('start-monitoring');
+            // Send videoId with start-monitoring event
+            socket.emit('start-monitoring', { videoId: cleanId });
 
             document.getElementById('startBtn').disabled = true;
             document.getElementById('stopBtn').disabled = false;
@@ -1283,15 +1391,46 @@
         socket.on('state-update', (state) => {
             console.log('State update received:', state);
 
-            // Tüm state bilgilerini güncelle
-            rewards = state.rewards || [];
+            // Handle new reward system structure
+            if (state.rewardSystem) {
+                rewards = state.rewardSystem.rewards || [];
+                rewardSystemActive = state.rewardSystem.active;
+                rewardMode = state.rewardSystem.mode || 'auto';
+
+                // Update auto config
+                if (state.rewardSystem.autoConfig) {
+                    autoInterval = state.rewardSystem.autoConfig.interval || 100;
+                    autoPrize = state.rewardSystem.autoConfig.prize || '100 TL';
+                    document.getElementById('autoInterval').value = autoInterval;
+                    document.getElementById('autoPrize').value = autoPrize;
+                }
+            } else {
+                // Fallback for old structure
+                rewards = state.rewards || [];
+                if (state.rewardSystemActive !== undefined) {
+                    rewardSystemActive = state.rewardSystemActive;
+                }
+                if (state.rewardMode !== undefined) {
+                    rewardMode = state.rewardMode;
+                }
+                if (state.autoMode) {
+                    autoInterval = state.autoMode.interval || 100;
+                    autoPrize = state.autoMode.prize || '100 TL';
+                    document.getElementById('autoInterval').value = autoInterval;
+                    document.getElementById('autoPrize').value = autoPrize;
+                }
+            }
+
             participants = state.chatParticipants || [];
 
-            // Ödül sistemi durumunu güncelle - undefined kontrolü önemli
-            if (state.rewardSystemActive !== undefined) {
-                rewardSystemActive = state.rewardSystemActive;
-                console.log('Reward system active:', rewardSystemActive);
+            // Update winners list if provided
+            if (state.winnersList) {
+                console.log('State winnersList received:', state.winnersList);
+                winners = state.winnersList;
+                updateWinnersTable();  // Update table immediately
             }
+
+            console.log('State update - Reward active:', rewardSystemActive, 'Winners count:', winners.length);
 
             // Video ID ve monitoring durumu
             if (state.videoId) {
@@ -1424,11 +1563,21 @@
             } else {
                 document.getElementById('remainingLikes').textContent = state.nextTarget ? '-' : 'Tamamlandı';
             }
+
+            // Always update tables at the end of state update
+            updateRewardsTable();
+            updateWinnersTable();
         });
 
         socket.on('rewards-update', (newRewards) => {
             rewards = newRewards;
             updateRewardsTable();
+            updateWinnersTable();
+        });
+
+        socket.on('winners-update', (newWinners) => {
+            console.log('winners-update received:', newWinners);
+            winners = newWinners;
             updateWinnersTable();
         });
 
@@ -1455,11 +1604,15 @@
 
         socket.on('reward-system-status', (status) => {
             rewardSystemActive = status;
+
+            const btn = document.getElementById('rewardSystemToggle');
+            const statusBadge = document.getElementById('rewardSystemStatus');
+
             if (status) {
-                document.getElementById('rewardSystemToggle').textContent = '⏹ Ödül Sistemini Durdur';
-                document.getElementById('rewardSystemToggle').className = 'btn-danger';
-                document.getElementById('rewardSystemStatus').className = 'badge badge-success';
-                document.getElementById('rewardSystemStatus').textContent = 'Açık';
+                btn.textContent = '⏸ Ödül Sistemini Durdur';
+                btn.className = 'btn-danger';
+                statusBadge.className = 'badge badge-success';
+                statusBadge.textContent = 'Açık';
                 // Disable inputs ve mod butonları
                 document.querySelectorAll('#targetsMode input, #autoMode input').forEach(input => {
                     input.disabled = true;
@@ -1544,26 +1697,58 @@
         });
 
         socket.on('reward-achieved', (reward) => {
-            rewards = rewards.map(r => r.target === reward.target ? reward : r);
+            console.log('reward-achieved received:', reward);
+
+            // Update rewards list
+            rewards = rewards.map(r => r.targetLikes === reward.targetLikes ? reward : r);
+
+            // Add to winners list if not already there
+            const existingWinner = winners.find(w =>
+                w.targetLikes === reward.targetLikes && w.name === reward.winner
+            );
+
+            if (!existingWinner) {
+                const newWinner = {
+                    name: reward.winner,
+                    prize: reward.prize,
+                    targetLikes: reward.targetLikes,
+                    id: reward.winnerId,
+                    timestamp: new Date().toISOString()
+                };
+                console.log('Adding new winner to list:', newWinner);
+                winners.push(newWinner);
+            } else {
+                console.log('Winner already exists in list');
+            }
+
             updateRewardsTable();
             updateWinnersTable();
-            addLog(`🎉 ÖDÜL KAZANILDI! ${reward.target} beğeni - ${reward.prize} - Kazanan: ${reward.winner}`, 'success');
+            addLog(`🎉 ÖDÜL KAZANILDI! ${reward.targetLikes} beğeni - ${reward.prize} - Kazanan: ${reward.winner}`, 'success');
         });
 
         // Monitoring events for refresh
         socket.on('monitoring-started', (data) => {
             // Use disabled property instead of display style for consistent behavior
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
-            document.getElementById('videoId').disabled = true;
-            document.getElementById('monitoringStatus').textContent = 'Aktif';
-            document.getElementById('monitoringStatus').className = 'badge badge-success';
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const videoIdInput = document.getElementById('videoId');
+            const monitoringStatus = document.getElementById('monitoringStatus');
+            const startLikesEl = document.getElementById('startLikes');
 
-            if (data.videoId) {
-                document.getElementById('videoId').value = data.videoId;
+            if (startBtn) startBtn.disabled = true;
+            if (stopBtn) stopBtn.disabled = false;
+            if (videoIdInput) videoIdInput.disabled = true;
+
+            if (monitoringStatus) {
+                monitoringStatus.textContent = 'Aktif';
+                monitoringStatus.className = 'badge badge-success';
             }
-            if (data.startLikes !== undefined) {
-                document.getElementById('startLikes').textContent = data.startLikes.toLocaleString();
+
+            if (data.videoId && videoIdInput) {
+                videoIdInput.value = data.videoId;
+            }
+            if (data.startLikes !== undefined && startLikesEl) {
+                startLikesEl.textContent = data.startLikes.toLocaleString();
             }
 
             // Dashboard update
@@ -1575,11 +1760,19 @@
 
         socket.on('monitoring-stopped', () => {
             // Use disabled property instead of display style for consistent behavior
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
-            document.getElementById('videoId').disabled = false;
-            document.getElementById('monitoringStatus').textContent = 'Pasif';
-            document.getElementById('monitoringStatus').className = 'badge badge-warning';
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const videoIdInput = document.getElementById('videoId');
+            const monitoringStatus = document.getElementById('monitoringStatus');
+
+            if (startBtn) startBtn.disabled = false;
+            if (stopBtn) stopBtn.disabled = true;
+            if (videoIdInput) videoIdInput.disabled = false;
+
+            if (monitoringStatus) {
+                monitoringStatus.textContent = 'Pasif';
+                monitoringStatus.className = 'badge badge-warning';
+            }
 
             // Dashboard update
             const dashboardMonitoring = document.getElementById('dashboardMonitoringStatus');

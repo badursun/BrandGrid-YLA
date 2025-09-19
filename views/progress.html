@@ -219,7 +219,7 @@
         h1 {
             font-size: 4em;
             color: #ffffff;
-            margin-bottom: 50px;
+            margin-bottom: 10px;
             font-weight: 800;
             letter-spacing: 2px;
             text-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
@@ -229,14 +229,14 @@
         .flip-counter {
             display: inline-flex;
             gap: 10px;
-            margin-bottom: 50px;
+            margin-bottom: 20px;
             transition: transform 0.5s;
         }
 
         .flip-digit-wrapper {
             position: relative;
             width: 110px;
-            height: 160px;
+            height: 140px;
         }
 
         .flip-digit {
@@ -249,7 +249,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 5.5em;
+            font-size: 4.6em;
             font-weight: bold;
             color: #fff;
             overflow: hidden;
@@ -316,10 +316,10 @@
             align-items: center;
             gap: 40px;
             margin-bottom: 30px;
-            font-size: 2.5em;
+            font-size: 5.5em;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 0px;
         }
 
         .stat-item {
@@ -343,8 +343,8 @@
         }
 
         .stat-value {
-            color: #ffd60a;
-            font-size: 1.1em;
+            color: #ffffff;
+            font-size: 0.8em;
             text-shadow: 0 0 20px rgba(255, 214, 10, 0.5);
         }
 
@@ -352,8 +352,8 @@
         .progress-container {
             width: 100%;
             height: 100px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
             padding: 10px;
             position: relative;
             overflow: hidden;
@@ -456,8 +456,8 @@
 
         .progress-bar {
             height: 100%;
-            border-radius: 40px;
-            background: linear-gradient(90deg, #ff006e, #8338ec, #3a86ff);
+            border-radius: 10px;
+            background: linear-gradient(90deg, #000000, #01875f, #c70000);
             background-size: 300% 100%;
             animation: gradient 3s ease infinite;
             transition: width 0.5s ease;
@@ -605,21 +605,16 @@
         /* Remaining info */
         .remaining-info {
             margin-top: 35px;
-            font-size: 2.2em;
+            font-size: 2.8em;
             color: rgba(255,255,255,0.9);
             transition: all 0.3s;
-            font-weight: 300;
+            font-weight: 800;
             letter-spacing: 2px;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.8),
-                        0 0 40px rgba(139, 92, 246, 0.3);
         }
 
         #remainingLikes {
-            color: #ffd60a;
-            font-size: 1.4em;
+            color: #ffffff;
             font-weight: 900;
-            text-shadow: 0 0 30px rgba(255, 214, 10, 0.8),
-                        0 0 60px rgba(255, 214, 10, 0.4);
             margin: 0 8px;
             display: inline-block;
             animation: glow-number 2s ease-in-out infinite;
@@ -1030,6 +1025,11 @@
         let streamStartTime = null;
         let streamDurationInterval = null;
 
+        // Winner queue system for sequential display
+        let winnerQueue = [];
+        let isShowingWinner = false;
+        let winnerTimeout = null;
+
         // Format duration as HH:MM:SS
         function formatDuration(seconds) {
             const hours = Math.floor(seconds / 3600);
@@ -1429,6 +1429,25 @@
             marqueeAnimation = requestAnimationFrame(animate);
         }
 
+        // Add winner to queue
+        function addWinnerToQueue(reward) {
+            winnerQueue.push(reward);
+            console.log(`Added winner to queue: ${reward.winner} - Queue length: ${winnerQueue.length}`);
+            processWinnerQueue();
+        }
+
+        // Process winner queue sequentially
+        function processWinnerQueue() {
+            if (isShowingWinner || winnerQueue.length === 0) {
+                return;
+            }
+
+            isShowingWinner = true;
+            const reward = winnerQueue.shift();
+            console.log(`Processing winner: ${reward.winner} - Remaining in queue: ${winnerQueue.length}`);
+            showWinner(reward);
+        }
+
         // Show winner
         function showWinner(reward) {
             const overlay = document.getElementById('winnerOverlay');
@@ -1447,13 +1466,27 @@
             createConfetti();
             createMoneyRain();
 
-            // Hide after 10 seconds
-            setTimeout(() => {
+            // Clear any existing timeout
+            if (winnerTimeout) {
+                clearTimeout(winnerTimeout);
+            }
+
+            // Hide after 10 seconds and process next winner
+            winnerTimeout = setTimeout(() => {
                 overlay.classList.remove('show');
                 // Clean up money rain and GIF
                 document.querySelectorAll('.money-rain').forEach(money => money.remove());
                 removeGifBackground();
-            }, 10000);
+
+                // Mark as not showing and process next winner after a short delay
+                setTimeout(() => {
+                    isShowingWinner = false;
+                    if (winnerQueue.length > 0) {
+                        console.log(`Processing next winner in queue (${winnerQueue.length} remaining)`);
+                        processWinnerQueue();
+                    }
+                }, 500); // 500ms delay between winners
+            }, 10000); // Show each winner for 10 seconds
         }
 
         // GIF list - will be loaded automatically from server
@@ -1632,21 +1665,31 @@
         });
 
         socket.on('progress-update', (data) => {
-            if (rewardSystemActive) {
-                updateProgressBar(data.percentage);
-                document.getElementById('nextTarget').textContent = data.nextTarget ? data.nextTarget.toLocaleString() : 'Tamamlandı';
-
-                if (data.nextTarget) {
-                    const remaining = data.nextTarget - data.currentLikes;
-                    document.getElementById('remainingLikes').textContent = remaining > 0 ? remaining.toLocaleString() : '0';
-                }
-            }
-
+            // Always update the flip counter
             updateFlipCounter(data.currentLikes);
+
+            // Only update progress bar and targets if we have a valid next target
+            if (data.nextTarget !== null && data.nextTarget !== undefined) {
+                updateProgressBar(data.percentage);
+                document.getElementById('nextTarget').textContent = data.nextTarget.toLocaleString();
+                const remaining = data.nextTarget - data.currentLikes;
+                document.getElementById('remainingLikes').textContent = remaining > 0 ? remaining.toLocaleString() : '0';
+            } else if (rewardSystemActive) {
+                // Reward system is active but no targets defined
+                updateProgressBar(0);
+                document.getElementById('nextTarget').textContent = 'Hedef Yok';
+                document.getElementById('remainingLikes').textContent = '0';
+            } else {
+                // Reward system is not active
+                updateProgressBar(0);
+                document.getElementById('nextTarget').textContent = '-';
+                document.getElementById('remainingLikes').textContent = '-';
+            }
         });
 
         socket.on('reward-achieved', (reward) => {
-            showWinner(reward);
+            // Add to queue instead of showing immediately
+            addWinnerToQueue(reward);
         });
 
         socket.on('winners-update', (winners) => {

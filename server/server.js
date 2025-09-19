@@ -17,6 +17,40 @@ const io = socketIo(server, {
   }
 });
 
+// Colorful console logging
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[36m',
+  red: '\x1b[31m',
+  magenta: '\x1b[35m'
+};
+
+function log(type, message) {
+  const timestamp = new Date().toLocaleTimeString('tr-TR');
+  switch(type) {
+    case 'success':
+      console.log(`${colors.green}✓ [${timestamp}] ${message}${colors.reset}`);
+      break;
+    case 'info':
+      console.log(`${colors.blue}ℹ [${timestamp}] ${message}${colors.reset}`);
+      break;
+    case 'warning':
+      console.log(`${colors.yellow}⚠ [${timestamp}] ${message}${colors.reset}`);
+      break;
+    case 'error':
+      console.log(`${colors.red}✗ [${timestamp}] ${message}${colors.reset}`);
+      break;
+    case 'system':
+      console.log(`${colors.magenta}⚙ [${timestamp}] ${message}${colors.reset}`);
+      break;
+    default:
+      console.log(`[${timestamp}] ${message}`);
+  }
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -32,11 +66,37 @@ app.get('/api/winner-gifs', async (req, res) => {
       !file.startsWith('.') // Ignore hidden files
     );
 
+    log('info', `Found ${gifFiles.length} winner GIFs`);
     res.json({ gifs: gifFiles });
   } catch (error) {
-    console.error('Error reading GIFs directory:', error);
+    log('error', `Error reading GIFs directory: ${error.message}`);
     res.json({ gifs: [] }); // Return empty array if error
   }
+});
+
+// Chat heartbeat endpoint for monitoring
+app.post('/api/chat-heartbeat', (req, res) => {
+  const { videoId, status, stats, participants_count } = req.body;
+
+  // Store last heartbeat time
+  state.lastChatHeartbeat = Date.now();
+
+  // Log important events
+  if (status === 'terminated') {
+    log('warning', `Chat fetcher terminated for video ${videoId}`);
+    if (stats) {
+      log('info', `Final stats - Messages: ${stats.messages_processed || 0}, Participants: ${stats.participants_found || 0}, Errors: ${stats.errors || 0}, Reconnects: ${stats.reconnects || 0}`);
+    }
+  } else if (status === 'alive') {
+    // Silent heartbeat, only log every 10th one to reduce noise
+    if (!state.heartbeatCount) state.heartbeatCount = 0;
+    state.heartbeatCount++;
+    if (state.heartbeatCount % 10 === 0) {
+      log('system', `Heartbeat #${state.heartbeatCount} - Participants: ${participants_count || 0}`);
+    }
+  }
+
+  res.json({ success: true });
 });
 
 // API endpoint for Python chat fetcher
@@ -45,457 +105,555 @@ app.post('/api/chat-participants', (req, res) => {
 
   if (videoId === state.videoId && participants) {
     // Update participants with ID support
+    let newParticipants = 0;
     participants.forEach(participant => {
-      if (typeof participant === 'string') {
-        // Eski format - sadece isim (geriye uyumluluk için)
-        console.log(`WARNING: Old format participant (string only): ${participant}`);
-        state.chatParticipants.set(participant, { name: participant, id: participant });
-      } else if (participant.id) {
-        // Yeni format - ID ile birlikte
-        console.log(`Adding participant: ${participant.name} with ID: ${participant.id}`);
-
-        // ID ve isim aynı mı kontrol et
-        if (participant.id === participant.name) {
-          console.error(`ERROR: Participant ID is same as name for ${participant.name}!`);
-        }
-
-        state.chatParticipants.set(participant.id, {
-          name: participant.name,
-          id: participant.id,
-          url: participant.url || ''
-        });
-      } else {
-        console.error(`ERROR: Participant has no ID:`, participant);
+      const id = participant.id || `${participant.name}_${Date.now()}`;
+      if (!state.chatParticipants.find(p => p.id === id)) {
+        state.chatParticipants.push(participant);
+        newParticipants++;
       }
     });
 
-    // Send participants as array with ID info
-    const participantsList = Array.from(state.chatParticipants.values());
-    io.emit('participants-update', participantsList);
+    if (newParticipants > 0) {
+      log('success', `+${newParticipants} new participants (Total: ${state.chatParticipants.length})`);
+    }
 
-    res.json({ success: true, count: state.chatParticipants.size });
+    io.emit('participants-update', state.chatParticipants);
+    res.json({ success: true, count: state.chatParticipants.length });
   } else {
-    res.status(400).json({ success: false, error: 'Invalid data' });
+    res.json({ success: false, message: 'Invalid video ID or no participants' });
   }
 });
 
-// State
+// State management
 let state = {
-  videoId: null,
   monitoring: false,
-  startLikes: 0,
+  videoId: null,
   currentLikes: 0,
-  rewards: [],
-  chatParticipants: new Map(), // Map: channel_id -> {name, id, url}
-  winners: new Map(), // Map: channel_id -> winner info
-  rewardSystemActive: false, // Ödül sistemi aktif mi?
-  rewardMode: 'auto', // 'targets' or 'auto' - default auto
-  autoMode: {
-    active: true,
-    interval: 100,
-    prize: '100 TL',
-    rewards: []
-  },
+  startLikes: 0,
+  chatParticipants: [],
+  progressTitle: 'CANLI YAYIN BAŞLADI',
+  winnersList: [],
   stats: {
-    totalViews: 0,
-    liveViewers: 0,
-    chatSpeed: 0,
-    streamDuration: 0,
     streamStartTime: null
   },
-  progressTitle: 'CANLI YAYIN BAŞLADI',
-  winnersList: [] // Kazananlar listesi
+  lastChatHeartbeat: null,
+  heartbeatCount: 0,
+  // New reward system structure
+  rewardSystem: {
+    active: false,
+    mode: 'auto', // 'auto' or 'custom'
+    autoConfig: {
+      interval: 100,
+      prize: '100 TL'
+    },
+    rewards: [], // All rewards (past, current, future)
+    currentTarget: null,
+    queue: [], // Rewards waiting to be processed
+    lastProcessedTarget: 0
+  }
 };
 
-// YouTube API functions
-async function fetchLikes(videoId) {
+async function fetchVideoStats(videoId) {
+  if (!videoId) return null;
+
   try {
-    const response = await axios.get(`https://www.youtube.com/watch?v=${videoId}`, {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const response = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
 
     const $ = cheerio.load(response.data);
-    const scriptData = $('script').text();
+    const scriptContent = $('script:contains("likeCount")').html();
 
-    // Beğeni sayısını bul
-    const likesMatch = scriptData.match(/"likeCount":"(\d+)"/);
-    if (likesMatch) {
-      return parseInt(likesMatch[1]);
+    if (scriptContent) {
+      const likeMatch = scriptContent.match(/"likeCount":"(\d+)"/);
+      const likes = likeMatch ? parseInt(likeMatch[1]) : null;
+      if (likes !== null) {
+        log('info', `Fetched likes: ${likes.toLocaleString('tr-TR')}`);
+      }
+      return { likes };
     }
-
-    // Alternatif pattern
-    const altMatch = scriptData.match(/\"label\":\"([\d,]+) likes?\"/);
-    if (altMatch) {
-      return parseInt(altMatch[1].replace(/,/g, ''));
-    }
-
-    return null;
   } catch (error) {
-    console.error('Beğeni çekme hatası:', error.message);
-    return null;
+    log('error', `Failed to fetch video stats: ${error.message}`);
   }
+
+  return null;
 }
 
-async function fetchChatParticipants(videoId) {
-  // YouTube Live Chat API entegrasyonu gerekli
-  // Gerçek chat verisi için API key ve implementation gerekiyor
-  return Array.from(state.chatParticipants);
-}
-
-// Monitoring loop
-let monitoringInterval;
+// Python chat fetcher process
 let chatProcess = null;
 
-function startMonitoring() {
-  if (monitoringInterval) return;
-
-  // Start Python chat fetcher for live streams
-  if (state.videoId && !chatProcess) {
-    // Windows uses 'python', macOS/Linux use 'python3'
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-    console.log(`Starting Python chat fetcher with command: ${pythonCommand}`);
-
-    chatProcess = spawn(pythonCommand, [
-      './python/chat_fetcher.py',
-      state.videoId,
-      'http://localhost:3001'
-    ]);
-
-    chatProcess.stdout.on('data', (data) => {
-      console.log(`Chat fetcher: ${data}`);
-    });
-
-    chatProcess.stderr.on('data', (data) => {
-      const errorMsg = data.toString();
-      console.error(`Chat fetcher error: ${errorMsg}`);
-
-      // Check for common Windows Python errors
-      if (errorMsg.includes('ModuleNotFoundError') || errorMsg.includes('No module named')) {
-        console.error('\n⚠️  PYTHON PACKAGE MISSING!');
-        console.error('Please run WINDOWS-SETUP.bat to install Python dependencies');
-        console.error('Or manually run: pip install pytchat requests\n');
-      }
-      if (errorMsg.includes('python') && errorMsg.includes('not found')) {
-        console.error('\n⚠️  PYTHON NOT FOUND!');
-        console.error('Please install Python from: https://www.python.org/downloads/');
-        console.error('IMPORTANT: Check "Add Python to PATH" during installation\n');
-      }
-    });
-
-    chatProcess.on('error', (error) => {
-      console.error('Failed to start Python chat fetcher:', error.message);
-      if (error.code === 'ENOENT') {
-        console.error('\n⚠️  Python command not found!');
-        if (process.platform === 'win32') {
-          console.error('On Windows, make sure Python is installed and added to PATH');
-          console.error('Run WINDOWS-SETUP.bat to check Python installation');
-        }
-      }
-    });
-
-    chatProcess.on('close', (code) => {
-      console.log(`Chat fetcher exited with code ${code}`);
-      if (code !== 0) {
-        console.error('Chat fetcher failed. Check Python installation and dependencies.');
-      }
-      chatProcess = null;
-    });
+function startChatFetcher() {
+  if (chatProcess) {
+    log('warning', 'Chat fetcher already running');
+    return;
   }
 
-  monitoringInterval = setInterval(async () => {
-    if (!state.monitoring || !state.videoId) return;
+  // Windows uses 'python', macOS/Linux use 'python3'
+  const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+  log('system', `Starting Python chat fetcher with command: ${pythonCommand}`);
 
-    // Beğeni sayısını güncelle
-    const likes = await fetchLikes(state.videoId);
-    if (likes !== null && likes !== state.currentLikes) {
-      state.currentLikes = likes;
-      io.emit('likes-update', likes);
-      checkRewards();
+  // Use robust version for better reliability
+  const scriptPath = './python/chat_fetcher_robust.py';
+
+  // Check if robust version exists, fallback to original if not
+  const fsSync = require('fs');
+  const finalScriptPath = fsSync.existsSync(scriptPath) ? scriptPath : './python/chat_fetcher.py';
+
+  log('system', `Using chat fetcher: ${finalScriptPath}`);
+
+  chatProcess = spawn(pythonCommand, [
+    finalScriptPath,
+    state.videoId,
+    'http://localhost:3001'
+  ]);
+
+  chatProcess.stdout.on('data', (data) => {
+    const message = data.toString().trim();
+    if (message.includes('Connected to chat')) {
+      log('success', message);
+    } else if (message.includes('New participant') || message.includes('New:')) {
+      log('info', message);
+    } else if (message.includes('Error') || message.includes('Failed')) {
+      log('error', message);
+    } else if (message.includes('Reconnect')) {
+      log('warning', message);
+    } else if (message.includes('✓')) {
+      log('success', message);
+    } else {
+      console.log(`[Chat] ${message}`);
     }
+  });
 
-  }, 5000); // 5 saniyede bir kontrol
+  chatProcess.stderr.on('data', (data) => {
+    log('error', `Chat fetcher error: ${data}`);
+  });
+
+  chatProcess.on('close', (code) => {
+    log(code === 0 ? 'info' : 'warning', `Chat fetcher process exited with code ${code}`);
+    chatProcess = null;
+  });
 }
 
-function stopMonitoring() {
-  if (monitoringInterval) {
-    clearInterval(monitoringInterval);
-    monitoringInterval = null;
+// Update likes periodically
+let updateInterval = null;
+
+function startLikesUpdater() {
+  if (updateInterval) return;
+
+  log('system', 'Starting likes updater (5 second interval)');
+  updateInterval = setInterval(async () => {
+    if (state.monitoring && state.videoId) {
+      const stats = await fetchVideoStats(state.videoId);
+      if (stats && stats.likes) {
+        const previousLikes = state.currentLikes;
+        state.currentLikes = stats.likes;
+
+        if (previousLikes !== state.currentLikes) {
+          log('info', `Likes updated: ${previousLikes.toLocaleString('tr-TR')} → ${state.currentLikes.toLocaleString('tr-TR')} (Δ +${(state.currentLikes - previousLikes).toLocaleString('tr-TR')})`);
+
+          io.emit('likes-update', state.currentLikes);
+          checkRewards();
+        }
+      }
+    }
+  }, 5000);
+}
+
+function stopLikesUpdater() {
+  if (updateInterval) {
+    clearInterval(updateInterval);
+    updateInterval = null;
+    log('system', 'Likes updater stopped');
+  }
+}
+
+// Reward system functions
+function getNextTarget() {
+  // If reward system is not active, return null
+  if (!state.rewardSystem.active) {
+    return null;
   }
 
-  // Stop Python chat fetcher
-  if (chatProcess) {
-    chatProcess.kill();
-    chatProcess = null;
+  if (state.rewardSystem.mode === 'auto' && state.rewardSystem.autoConfig.interval) {
+    // Always calculate from 0 with intervals
+    const interval = state.rewardSystem.autoConfig.interval;
+    const currentLikes = state.currentLikes || 0;
+
+    // Calculate how many intervals have passed
+    const passedIntervals = Math.floor(currentLikes / interval);
+
+    // Next target is the next interval
+    const nextTarget = (passedIntervals + 1) * interval;
+    state.rewardSystem.currentTarget = nextTarget;
+
+    return nextTarget;
+  } else if (state.rewardSystem.mode === 'custom') {
+    // Find next pending reward
+    const pendingReward = state.rewardSystem.rewards.find(r => !r.achieved && !r.skipped);
+    const target = pendingReward ? pendingReward.targetLikes : null;
+    state.rewardSystem.currentTarget = target;
+    return target;
+  }
+
+  // Default case - no target
+  state.rewardSystem.currentTarget = null;
+  return null;
+}
+
+function getProgressPercentage() {
+  // If reward system is not active, return 0
+  if (!state.rewardSystem.active) {
+    return 0;
+  }
+
+  const nextTarget = getNextTarget();
+  if (!nextTarget) return 100;
+
+  if (state.rewardSystem.mode === 'auto' && state.rewardSystem.autoConfig.interval) {
+    // For auto mode, calculate progress within the current interval
+    const interval = state.rewardSystem.autoConfig.interval;
+    const currentLikes = state.currentLikes || 0;
+
+    // Find the previous interval point
+    const passedIntervals = Math.floor(currentLikes / interval);
+    const previousTarget = passedIntervals * interval;
+
+    // Calculate progress from previous to next target
+    const progressInInterval = currentLikes - previousTarget;
+    const percentage = (progressInInterval / interval) * 100;
+
+    return Math.min(percentage, 100);
+  } else {
+    // For custom mode, calculate from start likes to target
+    const progress = state.currentLikes - state.startLikes;
+    const target = nextTarget - state.startLikes;
+    return Math.min((progress / target) * 100, 100);
   }
 }
 
 function checkRewards() {
-  // Ödül sistemi aktif değilse kontrol etme
-  if (!state.rewardSystemActive) return;
+  if (!state.rewardSystem.active) {
+    return;
+  }
 
-  // Hedefler modu - direkt target değerini kontrol et
-  if (state.rewardMode === 'targets') {
-    let allAchieved = true;
-    state.rewards.forEach(reward => {
-      if (!reward.achieved && state.currentLikes >= reward.target) {
-        achieveReward(reward);
+  const currentLikes = state.currentLikes || 0;
+  const mode = state.rewardSystem.mode;
+
+  if (mode === 'auto') {
+    const interval = state.rewardSystem.autoConfig.interval;
+    if (!interval) return;
+
+    // IMPORTANT: Skip all past rewards when starting
+    // Only process NEW targets that are reached AFTER monitoring started
+    const startLikes = state.startLikes || 0;
+
+    // Find the starting point - first target AFTER startLikes
+    const startingTarget = Math.floor(startLikes / interval) * interval + interval;
+
+    // Calculate current target range
+    const currentInterval = Math.floor(currentLikes / interval) * interval;
+
+    // Only check targets from starting point to current
+    for (let target = startingTarget; target <= currentLikes; target += interval) {
+      // Check if this target already exists
+      const existingReward = state.rewardSystem.rewards.find(r => r.targetLikes === target);
+
+      if (!existingReward) {
+        // New target reached - create reward
+        const order = target / interval;
+        const newReward = {
+          targetLikes: target,
+          prize: state.rewardSystem.autoConfig.prize,
+          achieved: false,
+          skipped: false,
+          winner: null,
+          order: order
+        };
+
+        state.rewardSystem.rewards.push(newReward);
+
+        // Add to queue for processing
+        state.rewardSystem.queue.push(newReward);
+        log('success', `🎯 NEW Target ${target} reached! (Started at ${startLikes}, Current: ${currentLikes})`);
+
+      } else if (!existingReward.achieved && !existingReward.skipped) {
+        // Existing unprocessed reward - add to queue once
+        if (!state.rewardSystem.queue.find(r => r.targetLikes === target)) {
+          state.rewardSystem.queue.push(existingReward);
+          log('info', `Processing pending target: ${target}`);
+        }
       }
-      if (!reward.achieved) {
-        allAchieved = false;
+    }
+
+    // Don't update lastProcessedTarget here - it should be updated in processRewardQueue
+    // when rewards are actually achieved or skipped
+
+  } else if (mode === 'custom') {
+    // Check custom rewards
+    state.rewardSystem.rewards.forEach(reward => {
+      if (!reward.achieved && !reward.skipped && currentLikes >= reward.targetLikes) {
+        // Add to queue if not already there
+        if (!state.rewardSystem.queue.find(r => r.targetLikes === reward.targetLikes)) {
+          state.rewardSystem.queue.push(reward);
+          log('success', `Custom target reached: ${reward.targetLikes.toLocaleString('tr-TR')} likes`);
+        }
       }
     });
+  }
 
-    // Tüm ödüller dağıtıldıysa bildiri gönder
-    if (allAchieved && state.rewards.length > 0) {
+  // Process queue
+  processRewardQueue();
+}
+
+// Process reward queue - handles rewards one by one
+function processRewardQueue() {
+  if (state.rewardSystem.queue.length === 0) return;
+
+  // Process all rewards in queue
+  while (state.rewardSystem.queue.length > 0) {
+    const reward = state.rewardSystem.queue.shift();
+
+    // Mark as achieved immediately to prevent re-processing
+    reward.achieved = true;
+
+    if (state.chatParticipants.length > 0) {
+      // Select random winner
+      const winner = state.chatParticipants[Math.floor(Math.random() * state.chatParticipants.length)];
+      reward.winner = winner.name;
+      reward.winnerId = winner.id;
+
+      state.winnersList.push({
+        name: winner.name,
+        prize: reward.prize,
+        id: winner.id,
+        targetLikes: reward.targetLikes,
+        order: reward.order,
+        timestamp: new Date().toISOString()
+      });
+
+      log('success', `🏆 WINNER: ${winner.name} won "${reward.prize}" at ${reward.targetLikes} likes!`);
+
+      // Emit winner event
+      io.emit('reward-achieved', reward);
+      io.emit('winners-update', state.winnersList);
+
+    } else {
+      // No participants - mark as skipped
+      reward.skipped = true;
+      reward.skipReason = 'No participants';
+      log('warning', `⚠️ Reward skipped at ${reward.targetLikes} likes - No participants`);
+    }
+  }
+
+  // Check if all rewards completed (for custom mode)
+  if (state.rewardSystem.mode === 'custom') {
+    const hasMoreRewards = state.rewardSystem.rewards.some(r => !r.achieved && !r.skipped);
+    if (!hasMoreRewards) {
+      log('info', '🎉 All custom rewards completed!');
       io.emit('all-rewards-completed');
     }
   }
 
-  // Otomatik mod - her interval'de ödül
-  if (state.rewardMode === 'auto' && state.autoMode.active) {
-    const interval = state.autoMode.interval;
-
-    // Başlangıç noktası
-    const startPoint = Math.floor(state.startLikes / interval) * interval;
-
-    // Şu anki noktadan geriye doğru kontrol et
-    const currentPoint = Math.floor(state.currentLikes / interval) * interval;
-
-    // Her interval noktası için kontrol yap
-    for (let target = startPoint + interval; target <= currentPoint; target += interval) {
-      // Bu hedef için ödül var mı kontrol et
-      let targetReward = state.autoMode.rewards.find(r => r.target === target);
-
-      if (!targetReward) {
-        // Yoksa oluştur
-        targetReward = {
-          target: target,
-          prize: state.autoMode.prize,
-          achieved: false,
-          winner: null,
-          isAuto: true
-        };
-        state.autoMode.rewards.push(targetReward);
-      }
-
-      // Henüz verilmediyse ve hedefe ulaştıysak ver
-      if (!targetReward.achieved && state.currentLikes >= target) {
-        achieveReward(targetReward);
-        console.log(`Auto reward achieved at ${target} likes`);
-      }
-    }
-
-    io.emit('auto-rewards-update', state.autoMode.rewards);
-  }
+  // Update progress
+  io.emit('progress-update', {
+    percentage: getProgressPercentage(),
+    nextTarget: getNextTarget(),
+    currentLikes: state.currentLikes,
+    startLikes: state.startLikes
+  });
 }
 
-function achieveReward(reward) {
-  reward.achieved = true;
-  reward.achievedAt = new Date();
-
-  // Kazanan seç - ID tabanlı
-  const eligibleParticipants = Array.from(state.chatParticipants.values())
-    .filter(p => !state.winners.has(p.id));
-
-  if (eligibleParticipants.length > 0) {
-    const winnerData = eligibleParticipants[Math.floor(Math.random() * eligibleParticipants.length)];
-    console.log('Selected winner:', JSON.stringify(winnerData, null, 2));
-    console.log('Winner ID:', winnerData.id);
-    console.log('Winner Name:', winnerData.name);
-    reward.winner = winnerData.name;
-    reward.winnerId = winnerData.id;
-    state.winners.set(winnerData.id, winnerData);
-
-    // Kazananlar listesine ekle
-    state.winnersList.push({
-      name: winnerData.name,
-      id: winnerData.id,
-      prize: reward.prize,
-      time: new Date()
-    });
-
-    io.emit('reward-achieved', reward);
-    io.emit('winners-update', state.winnersList);
+// Legacy function - kept for compatibility but simplified
+function selectRandomWinner(reward) {
+  // Add to queue and process
+  if (!state.rewardSystem.queue.find(r => r.targetLikes === reward.targetLikes)) {
+    state.rewardSystem.queue.push(reward);
   }
+  processRewardQueue();
 }
 
-function getNextTarget() {
-  // Ödül sistemi kapalıysa hesaplama yapma
-  if (!state.rewardSystemActive) return null;
-
-  // Auto mode - bir sonraki yüzlük hedefe yuvarla
-  if (state.rewardMode === 'auto' && state.autoMode.active) {
-    const interval = state.autoMode.interval;
-
-    // En son verilen ödülün hedefini bul
-    let lastAchievedTarget = 0;
-    if (state.autoMode.rewards) {
-      state.autoMode.rewards.forEach(reward => {
-        if (reward.achieved && reward.target > lastAchievedTarget) {
-          lastAchievedTarget = reward.target;
-        }
-      });
-    }
-
-    // Sonraki hedef, ya son ödülden sonraki interval ya da mevcut pozisyondan sonraki interval
-    const nextFromLast = lastAchievedTarget + interval;
-    const nextFromCurrent = Math.ceil(state.currentLikes / interval) * interval;
-
-    // İkisinden büyük olanı al (ödül verilmemiş en yakın hedef)
-    return Math.max(nextFromLast, nextFromCurrent);
-  }
-
-  // Targets mode - direkt hedef değerini döndür
-  const pending = state.rewards.find(r => !r.achieved);
-  return pending ? pending.target : null;
-}
-
-function getProgressPercentage() {
-  const nextTarget = getNextTarget();
-  if (!nextTarget) return 100;
-
-  // Eğer hedefe ulaştıysak 100 döndür
-  if (state.currentLikes >= nextTarget) return 100;
-
-  // Auto mode - mevcut interval içindeki ilerleme
-  if (state.rewardMode === 'auto' && state.autoMode.active) {
-    const interval = state.autoMode.interval;
-
-    // Önceki hedefi bul (son verilen ödül veya interval'in katı)
-    let prevTarget = 0;
-    if (state.autoMode.rewards) {
-      state.autoMode.rewards.forEach(reward => {
-        if (reward.achieved && reward.target > prevTarget && reward.target < nextTarget) {
-          prevTarget = reward.target;
-        }
-      });
-    }
-
-    // Eğer ödül yoksa, mevcut pozisyondan önceki interval'i al
-    if (prevTarget === 0) {
-      prevTarget = Math.floor(state.currentLikes / interval) * interval;
-    }
-
-    // İlerleme hesapla
-    const totalDistance = nextTarget - prevTarget;
-    const currentDistance = state.currentLikes - prevTarget;
-    const progress = (currentDistance / totalDistance) * 100;
-
-    return Math.min(Math.max(progress, 0), 99.99); // 100'e ulaşmadan önce maksimum 99.99
-  }
-
-  // Targets mode - en son achieved'dan bu hedefe kadar olan ilerleme
-  let prevTarget = 0;
-  for (const reward of state.rewards) {
-    if (reward.achieved) {
-      prevTarget = reward.target;
-    } else {
-      break;
-    }
-  }
-
-  const totalDistance = nextTarget - prevTarget;
-  const currentDistance = state.currentLikes - prevTarget;
-
-  if (totalDistance <= 0) return 100;
-  const progress = (currentDistance / totalDistance) * 100;
-  // Hedefe ulaşmadan önce maksimum 99.99 göster
-  return state.currentLikes >= nextTarget ? 100 : Math.min(Math.max(progress, 0), 99.99);
-}
-
-// Socket.IO events
+// Socket.io connections
 io.on('connection', (socket) => {
-  console.log('Client connected');
+  log('info', `New client connected: ${socket.id}`);
 
-  // Send initial state - TÜM state bilgilerini gönder
+  // Send state with calculated values
   socket.emit('state-update', {
     ...state,
-    chatParticipants: Array.from(state.chatParticipants.values()),
-    winners: Array.from(state.winners.values()),
-    progress: getProgressPercentage(),
+    rewardSystemActive: state.rewardSystem.active,
+    rewardMode: state.rewardSystem.mode,
+    rewards: state.rewardSystem.rewards,
+    autoMode: state.rewardSystem.autoConfig,
     nextTarget: getNextTarget(),
-    startLikes: state.startLikes,
-    currentLikes: state.currentLikes,
-    progressTitle: state.progressTitle,
-    rewardSystemActive: state.rewardSystemActive,
-    winnersList: state.winnersList,
-    monitoring: state.monitoring,
-    videoId: state.videoId,
-    rewardMode: state.rewardMode,
-    autoMode: state.autoMode
+    progress: getProgressPercentage()
   });
 
-  // get-progress event'i - control panel refresh için
-  socket.on('get-progress', () => {
-    console.log('get-progress received, sending state with rewardSystemActive:', state.rewardSystemActive);
-
-    // Tüm state'i geri gönder
-    const stateToSend = {
-      ...state,
-      chatParticipants: Array.from(state.chatParticipants.values()),
-      winners: Array.from(state.winners.values()),
-      progress: getProgressPercentage(),
-      nextTarget: getNextTarget(),
-      startLikes: state.startLikes,
-      currentLikes: state.currentLikes,
-      progressTitle: state.progressTitle,
-      rewardSystemActive: state.rewardSystemActive,
-      winnersList: state.winnersList,
-      monitoring: state.monitoring,
-      videoId: state.videoId,
-      rewardMode: state.rewardMode,
-      autoMode: state.autoMode,
-      stats: state.stats,
-      autoRewards: state.autoMode.rewards
-    };
-
-    console.log('Sending full state:', stateToSend);
-    socket.emit('state-update', stateToSend);
-
-    // Eğer auto mode aktifse, auto rewards'ı da gönder
-    if (state.rewardMode === 'auto' && state.autoMode.rewards) {
-      socket.emit('auto-rewards-update', state.autoMode.rewards);
+  socket.on('start-monitoring', async (data) => {
+    // Check if data is provided
+    if (!data) {
+      log('error', 'No data provided to start-monitoring');
+      socket.emit('error', 'Data parametresi eksik');
+      return;
     }
 
-    // Participants update
-    socket.emit('participants-update', Array.from(state.chatParticipants.values()));
+    const { videoId } = data;
 
-    // Likes update
-    socket.emit('likes-update', state.currentLikes);
+    if (!videoId) {
+      log('error', 'Video ID missing in start-monitoring request');
+      socket.emit('error', 'Video ID gerekli');
+      return;
+    }
 
-    // Monitoring status
-    if (state.monitoring) {
-      socket.emit('monitoring-started', {
-        videoId: state.videoId,
+    log('system', `Starting monitoring for video: ${videoId}`);
+
+    const stats = await fetchVideoStats(videoId);
+
+    if (stats && stats.likes !== null) {
+      state.startLikes = stats.likes;
+      state.currentLikes = stats.likes;
+      state.monitoring = true;
+      state.videoId = videoId;
+      state.chatParticipants = [];
+      state.stats = {
+        ...state.stats,
+        streamStartTime: Date.now()
+      };
+
+      log('success', `Monitoring started - Initial likes: ${stats.likes.toLocaleString('tr-TR')}`);
+
+      startLikesUpdater();
+
+      // Start Python chat fetcher
+      log('system', 'Starting chat fetcher...');
+      startChatFetcher();
+
+      io.emit('monitoring-started', {
+        videoId,
         startLikes: state.startLikes
       });
+
+      // Send full state update to all clients
+      io.emit('state-update', {
+        ...state,
+        rewardSystemActive: state.rewardSystem.active,
+        rewardMode: state.rewardSystem.mode,
+        rewards: state.rewardSystem.rewards,
+        autoMode: state.rewardSystem.autoConfig,
+        nextTarget: getNextTarget(),
+        progress: getProgressPercentage()
+      });
+
+      socket.emit('monitoring-status', {
+        success: true,
+        likes: stats.likes
+      });
     } else {
-      socket.emit('monitoring-stopped');
+      log('error', `Failed to fetch stats for video: ${videoId}`);
+      socket.emit('monitoring-status', {
+        success: false,
+        message: 'Video istatistikleri alınamadı'
+      });
+    }
+  });
+
+  socket.on('stop-monitoring', () => {
+    log('warning', 'Stopping monitoring...');
+    state.monitoring = false;
+    stopLikesUpdater();
+
+    // Stop chat fetcher
+    if (chatProcess) {
+      log('system', 'Stopping chat fetcher process...');
+      chatProcess.kill();
+      chatProcess = null;
     }
 
-    console.log('State sent to client after get-progress request');
+    io.emit('monitoring-stopped');
+    log('info', 'Monitoring stopped');
   });
 
-  socket.on('set-video', (videoId) => {
-    state.videoId = videoId;
-    io.emit('video-changed', videoId);
+  socket.on('get-progress', () => {
+    const nextTarget = getNextTarget();
+    const percentage = getProgressPercentage();
+
+    log('system', `get-progress: mode=${state.rewardSystem.mode}, active=${state.rewardSystem.active}, interval=${state.rewardSystem.autoConfig.interval}, nextTarget=${nextTarget}, percentage=${percentage}`);
+
+    socket.emit('progress-update', {
+      percentage: percentage,
+      nextTarget: nextTarget,
+      currentLikes: state.currentLikes,
+      startLikes: state.startLikes
+    });
   });
 
-  socket.on('set-progress-title', (title) => {
-    state.progressTitle = title;
-    io.emit('progress-title-changed', title);
+  socket.on('set-reward-mode', (mode) => {
+    state.rewardSystem.mode = mode;
+    log('system', `Reward mode changed to: ${mode}`);
+
+    // Clear rewards when switching modes
+    if (state.rewardSystem.active) {
+      state.rewardSystem.rewards = [];
+      state.rewardSystem.queue = [];
+      state.rewardSystem.lastProcessedTarget = 0;
+    }
+
+    io.emit('reward-mode-changed', mode);
+    io.emit('progress-update', {
+      percentage: getProgressPercentage(),
+      nextTarget: getNextTarget(),
+      currentLikes: state.currentLikes,
+      startLikes: state.startLikes
+    });
+  });
+
+  socket.on('set-auto-config', (config) => {
+    const configChanged = state.rewardSystem.autoConfig.interval !== config.interval ||
+                         state.rewardSystem.autoConfig.prize !== config.prize;
+
+    state.rewardSystem.autoConfig.interval = config.interval;
+    state.rewardSystem.autoConfig.prize = config.prize;
+
+    log('system', `Auto config updated - Interval: ${config.interval}, Prize: ${config.prize}`);
+
+    if (configChanged && state.rewardSystem.active && state.rewardSystem.mode === 'auto') {
+      // Reset rewards when config changes during active auto mode
+      state.rewardSystem.rewards = [];
+      state.rewardSystem.queue = [];
+      state.rewardSystem.lastProcessedTarget = 0;
+      checkRewards();
+    }
+
+    io.emit('auto-config-updated', config);
+    io.emit('progress-update', {
+      percentage: getProgressPercentage(),
+      nextTarget: getNextTarget(),
+      currentLikes: state.currentLikes,
+      startLikes: state.startLikes
+    });
   });
 
   socket.on('add-reward', (reward) => {
-    state.rewards.push({
+    // Add reward to custom rewards
+    state.rewardSystem.rewards.push({
       ...reward,
       achieved: false,
-      winner: null
+      skipped: false,
+      winner: null,
+      order: state.rewardSystem.rewards.length + 1
     });
-    state.rewards.sort((a, b) => a.target - b.target);
-    io.emit('rewards-update', state.rewards);
+    state.rewardSystem.rewards.sort((a, b) => (a.targetLikes || 0) - (b.targetLikes || 0));
+
+    log('system', `Reward added - ${reward.targetLikes} likes for ${reward.prize}`);
+    io.emit('rewards-update', state.rewardSystem.rewards);
+
+    // Check if this reward should be triggered immediately
+    if (state.rewardSystem.active && state.rewardSystem.mode === 'custom') {
+      checkRewards();
+    }
+
     // Send progress update
     io.emit('progress-update', {
       percentage: getProgressPercentage(),
@@ -506,150 +664,97 @@ io.on('connection', (socket) => {
   });
 
   socket.on('remove-reward', (index) => {
-    state.rewards.splice(index, 1);
-    io.emit('rewards-update', state.rewards);
-  });
+    if (state.rewardSystem.rewards[index]) {
+      const removed = state.rewardSystem.rewards.splice(index, 1)[0];
+      log('system', `Reward removed - ${removed.targetLikes} likes`);
+      io.emit('rewards-update', state.rewardSystem.rewards);
 
-  socket.on('clear-rewards', () => {
-    state.rewards = [];
-    state.winners.clear();
-    io.emit('rewards-update', state.rewards);
-  });
-
-  socket.on('start-monitoring', async () => {
-    if (!state.videoId) {
-      socket.emit('error', 'Lütfen önce video ID girin');
-      return;
+      // Send progress update
+      io.emit('progress-update', {
+        percentage: getProgressPercentage(),
+        nextTarget: getNextTarget(),
+        currentLikes: state.currentLikes,
+        startLikes: state.startLikes
+      });
     }
-
-    // Get initial likes count
-    const initialLikes = await fetchLikes(state.videoId);
-    if (initialLikes !== null) {
-      state.startLikes = initialLikes;
-      state.currentLikes = initialLikes;
-    }
-
-    state.monitoring = true;
-    state.stats.streamStartTime = Date.now();
-    startMonitoring();
-    io.emit('monitoring-status', true);
-    io.emit('start-likes', state.startLikes);
-
-    // Emit monitoring-started event for button state update
-    io.emit('monitoring-started', {
-      videoId: state.videoId,
-      startLikes: state.startLikes
-    });
   });
 
-  socket.on('stop-monitoring', () => {
-    state.monitoring = false;
-    state.stats.streamStartTime = null;
-    stopMonitoring();
-    io.emit('monitoring-status', false);
-
-    // Emit monitoring-stopped event for button state update
-    io.emit('monitoring-stopped');
+  socket.on('set-rewards', (rewards) => {
+    state.rewardSystem.rewards = rewards.map((r, i) => ({
+      ...r,
+      achieved: false,
+      skipped: false,
+      winner: null,
+      order: i + 1
+    }));
+    log('system', `Rewards updated - ${rewards.length} rewards configured`);
+    io.emit('rewards-update', state.rewardSystem.rewards);
   });
 
-  socket.on('get-progress', () => {
-    socket.emit('progress-update', {
-      percentage: getProgressPercentage(),
-      nextTarget: getNextTarget(),
-      currentLikes: state.currentLikes,
-      startLikes: state.startLikes
-    });
-  });
+  socket.on('toggle-reward-system', (status) => {
+    state.rewardSystem.active = status;
+    log(status ? 'success' : 'warning', `Reward system ${status ? 'activated' : 'deactivated'}`);
 
-  socket.on('set-reward-mode', (mode) => {
-    state.rewardMode = mode;
-    io.emit('reward-mode-changed', mode);
-    // Recalculate and send progress update
-    io.emit('progress-update', {
-      percentage: getProgressPercentage(),
-      nextTarget: getNextTarget(),
-      currentLikes: state.currentLikes,
-      startLikes: state.startLikes
-    });
-  });
-
-  socket.on('set-auto-config', (config) => {
-    // Sadece config değiştiyse güncelle
-    const configChanged = state.autoMode.interval !== config.interval ||
-                         state.autoMode.prize !== config.prize;
-
-    state.autoMode.interval = config.interval;
-    state.autoMode.prize = config.prize;
-
-    // Eğer interval değiştiyse, sadece yeni ödülleri hesapla (eskileri silme!)
-    if (configChanged && state.autoMode.interval) {
-      // Mevcut ödülleri koru, sadece yenileri ekle
-      checkRewards();
-    }
-
-    io.emit('auto-config-updated', config);
-    // Send progress update
-    io.emit('progress-update', {
-      percentage: getProgressPercentage(),
-      nextTarget: getNextTarget(),
-      currentLikes: state.currentLikes,
-      startLikes: state.startLikes
-    });
-  });
-
-  socket.on('activate-auto-mode', () => {
-    state.rewardMode = 'auto';
-    state.autoMode.active = true;
-    state.autoMode.rewards = [];
-
-    checkRewards();
-    io.emit('auto-mode-activated');
-    // Send progress update
-    io.emit('progress-update', {
-      percentage: getProgressPercentage(),
-      nextTarget: getNextTarget(),
-      currentLikes: state.currentLikes,
-      startLikes: state.startLikes
-    });
-  });
-
-  socket.on('deactivate-auto-mode', () => {
-    state.autoMode.active = false;
-    io.emit('auto-mode-deactivated');
-  });
-
-  socket.on('clear-auto-rewards', () => {
-    state.autoMode.rewards = [];
-    io.emit('auto-rewards-cleared');
-  });
-
-  socket.on('toggle-reward-system', () => {
-    state.rewardSystemActive = !state.rewardSystemActive;
-
-    if (state.rewardSystemActive) {
-      // Ödül sistemi açıldığında
-      if (state.rewardMode === 'auto') {
-        state.autoMode.rewards = []; // Auto rewards'ı sıfırla
+    if (status) {
+      // Activating reward system
+      if (state.rewardSystem.mode === 'auto') {
+        // Clear old rewards for fresh start in auto mode
+        state.rewardSystem.rewards = [];
+        state.rewardSystem.queue = [];
+        state.rewardSystem.lastProcessedTarget = 0;
+        log('system', 'Auto mode activated - starting fresh');
       }
-      checkRewards(); // Hemen kontrol et
+      // Check for any immediate rewards
+      checkRewards();
+    } else {
+      // Deactivating reward system
+      state.rewardSystem.queue = [];
+      log('system', 'Reward system deactivated - queue cleared');
     }
 
-    io.emit('reward-system-status', state.rewardSystemActive);
+    io.emit('reward-system-status', status);
+
+    // Send progress update
+    io.emit('progress-update', {
+      percentage: getProgressPercentage(),
+      nextTarget: getNextTarget(),
+      currentLikes: state.currentLikes,
+      startLikes: state.startLikes
+    });
   });
 
-  socket.on('reset-winners', () => {
-    state.winners.clear();
+  socket.on('set-progress-title', (title) => {
+    state.progressTitle = title;
+    log('info', `Progress title changed to: ${title}`);
+    io.emit('progress-title-changed', title);
+  });
+
+  socket.on('clear-winners', () => {
     state.winnersList = [];
+    log('warning', 'Winners list cleared');
     io.emit('winners-update', state.winnersList);
   });
 
   socket.on('disconnect', () => {
-    console.log('Client disconnected');
+    log('info', `Client disconnected: ${socket.id}`);
   });
 });
 
-// Start server
+// Serve static files
+app.use(express.static('public'));
+app.use('/views', express.static('views'));
+app.use('/assets', express.static('assets'));
+
 const PORT = process.env.PORT || 3001;
+
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log('');
+  console.log(`${colors.bright}${colors.green}╔════════════════════════════════════════════╗${colors.reset}`);
+  console.log(`${colors.bright}${colors.green}║   YouTube Live Awards System Started!      ║${colors.reset}`);
+  console.log(`${colors.bright}${colors.green}║   Server: http://localhost:${PORT}            ║${colors.reset}`);
+  console.log(`${colors.bright}${colors.green}╚════════════════════════════════════════════╝${colors.reset}`);
+  console.log('');
+  log('success', 'All systems operational');
+  log('info', 'Waiting for connections...');
+  console.log('');
 });
